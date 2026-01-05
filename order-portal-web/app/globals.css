@@ -2,99 +2,77 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ============================================
-   SONANCE BRAND VARIABLES
-   ============================================ */
-
 @layer base {
   :root {
     /* Core Sonance Brand Colors */
-    --sonance-charcoal: #333F48;
-    --sonance-blue: #00A3E1;
-    --sonance-light-gray: #D9D9D6;
-    --sonance-white: #FFFFFF;
-    --sonance-black: #000000;
+    --background: 0 0% 100%;
+    --foreground: 210 24% 16%;
     
-    /* Light Mode - Backgrounds */
-    --background: #FFFFFF;
-    --foreground: #333F48;
+    --card: 0 0% 100%;
+    --card-foreground: 210 24% 16%;
     
-    /* Primary Interactive Elements */
-    --primary: #333F48;
-    --primary-foreground: #FFFFFF;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 24% 16%;
     
-    /* Secondary Interactive Elements */
-    --secondary: #f0f2f3;
-    --secondary-foreground: #333F48;
+    --primary: 210 24% 16%;
+    --primary-foreground: 0 0% 100%;
     
-    /* Muted/Subtle Elements */
-    --muted: #f0f2f3;
-    --muted-foreground: #6b7780;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 210 24% 16%;
     
-    /* Accent (using Sonance Blue) */
-    --accent: #00A3E1;
-    --accent-foreground: #FFFFFF;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
     
-    /* Cards & Surfaces */
-    --card: #FFFFFF;
-    --card-foreground: #333F48;
+    --accent: 197 71% 44%;
+    --accent-foreground: 0 0% 100%;
     
-    /* Borders */
-    --border: #D9D9D6;
-    --input: #D9D9D6;
-    --ring: #00A3E1;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
     
-    /* Destructive/Error States */
-    --destructive: #C62828;
-    --destructive-foreground: #FFFFFF;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 197 71% 44%;
     
-    /* Popovers & Dialogs */
-    --popover: #FFFFFF;
-    --popover-foreground: #333F48;
-    
-    /* Border Radius */
     --radius: 0.5rem;
   }
 
-  /* Dark Mode */
   .dark {
-    --background: #1a1f24;
-    --foreground: #FFFFFF;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
     
-    --primary: #FFFFFF;
-    --primary-foreground: #333F48;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
     
-    --secondary: #2d343c;
-    --secondary-foreground: #FFFFFF;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
     
-    --muted: #2d343c;
-    --muted-foreground: #8f999f;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
     
-    --accent: #00A3E1;
-    --accent-foreground: #FFFFFF;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
     
-    --card: #242a31;
-    --card-foreground: #FFFFFF;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
     
-    --border: #3a444c;
-    --input: #3a444c;
-    --ring: #00A3E1;
+    --accent: 197 71% 44%;
+    --accent-foreground: 210 40% 98%;
     
-    --destructive: #EF5350;
-    --destructive-foreground: #FFFFFF;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
     
-    --popover: #242a31;
-    --popover-foreground: #FFFFFF;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
-  
   body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
 }
