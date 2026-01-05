@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   SONANCE BRAND VARIABLES
+   ============================================ */
+
+@layer base {
+  :root {
+    /* Core Sonance Brand Colors */
+    --sonance-charcoal: #333F48;
+    --sonance-blue: #00A3E1;
+    --sonance-light-gray: #D9D9D6;
+    --sonance-white: #FFFFFF;
+    --sonance-black: #000000;
+    
+    /* Light Mode - Backgrounds */
+    --background: #FFFFFF;
+    --foreground: #333F48;
+    
+    /* Primary Interactive Elements */
+    --primary: #333F48;
+    --primary-foreground: #FFFFFF;
+    
+    /* Secondary Interactive Elements */
+    --secondary: #f0f2f3;
+    --secondary-foreground: #333F48;
+    
+    /* Muted/Subtle Elements */
+    --muted: #f0f2f3;
+    --muted-foreground: #6b7780;
+    
+    /* Accent (using Sonance Blue) */
+    --accent: #00A3E1;
+    --accent-foreground: #FFFFFF;
+    
+    /* Cards & Surfaces */
+    --card: #FFFFFF;
+    --card-foreground: #333F48;
+    
+    /* Borders */
+    --border: #D9D9D6;
+    --input: #D9D9D6;
+    --ring: #00A3E1;
+    
+    /* Destructive/Error States */
+    --destructive: #C62828;
+    --destructive-foreground: #FFFFFF;
+    
+    /* Popovers & Dialogs */
+    --popover: #FFFFFF;
+    --popover-foreground: #333F48;
+    
+    /* Border Radius */
+    --radius: 0.5rem;
+  }
+
+  /* Dark Mode */
+  .dark {
+    --background: #1a1f24;
+    --foreground: #FFFFFF;
+    
+    --primary: #FFFFFF;
+    --primary-foreground: #333F48;
+    
+    --secondary: #2d343c;
+    --secondary-foreground: #FFFFFF;
+    
+    --muted: #2d343c;
+    --muted-foreground: #8f999f;
+    
+    --accent: #00A3E1;
+    --accent-foreground: #FFFFFF;
+    
+    --card: #242a31;
+    --card-foreground: #FFFFFF;
+    
+    --border: #3a444c;
+    --input: #3a444c;
+    --ring: #00A3E1;
+    
+    --destructive: #EF5350;
+    --destructive-foreground: #FFFFFF;
+    
+    --popover: #242a31;
+    --popover-foreground: #FFFFFF;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
