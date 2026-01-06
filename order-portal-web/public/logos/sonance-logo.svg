@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 120" fill="none">
+  <!-- SONANCE Logo with The Beam -->
+  <text x="0" y="95" font-family="Montserrat, Arial, sans-serif" font-size="100" font-weight="400" letter-spacing="0.15em">
+    <tspan fill="#333F48">SON</tspan>
+  </text>
+  <!-- The Beam - Cyan A -->
+  <text x="267" y="95" font-family="Montserrat, Arial, sans-serif" font-size="100" font-weight="400" letter-spacing="0.15em" fill="#00A3E1">A</text>
+  <text x="340" y="95" font-family="Montserrat, Arial, sans-serif" font-size="100" font-weight="400" letter-spacing="0.15em" fill="#333F48">NCE</text>
+</svg>
+
