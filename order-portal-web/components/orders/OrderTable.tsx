@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { Tables } from '@/lib/types/database'
 import { AlertTriangle, XCircle, CheckCircle } from 'lucide-react'
 
@@ -11,6 +11,8 @@ type Order = Tables<'orders'> & {
   status_name: string
   price_issues_count: number
   invalid_items_count: number
+  total_amount: number
+  csr_name: string
 }
 
 export function OrderTable({ orders }: { orders: Order[] }) {
@@ -29,23 +31,32 @@ export function OrderTable({ orders }: { orders: Order[] }) {
 
   return (
     <div className="rounded-sm border border-[#D9D9D6] bg-white overflow-hidden shadow-sm">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" style={{ paddingLeft: '24px', paddingTop: '24px' }}>
         <table className="w-full">
           <thead>
             <tr className="border-b border-[#D9D9D6]" style={{ backgroundColor: '#F5F5F5' }}>
-              <th className="px-4 md:px-6 py-4 text-left text-xs font-medium uppercase tracking-widest text-[#6b7a85]">
-                Status
+              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px' }}>
+                Order #
               </th>
-              <th className="px-4 md:px-6 py-4 text-left text-xs font-medium uppercase tracking-widest text-[#6b7a85]">
-                Order Number
-              </th>
-              <th className="hidden md:table-cell px-6 py-4 text-left text-xs font-medium uppercase tracking-widest text-[#6b7a85]">
-                Customer
-              </th>
-              <th className="hidden lg:table-cell px-6 py-4 text-left text-xs font-medium uppercase tracking-widest text-[#6b7a85]">
+              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px' }}>
                 Order Date
               </th>
-              <th className="px-4 md:px-6 py-4 text-left text-xs font-medium uppercase tracking-widest text-[#6b7a85]">
+              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px' }}>
+                Customer
+              </th>
+              <th className="py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px', paddingLeft: '16px', paddingRight: '8px', maxWidth: '120px' }}>
+                PS Account
+              </th>
+              <th className="py-4 text-right font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px', paddingLeft: '8px', paddingRight: '24px' }}>
+                Total $
+              </th>
+              <th className="py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px', paddingLeft: '24px', paddingRight: '16px' }}>
+                Assigned CSR
+              </th>
+              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px' }}>
+                Status
+              </th>
+              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px' }}>
                 Issues
               </th>
             </tr>
@@ -56,41 +67,53 @@ export function OrderTable({ orders }: { orders: Order[] }) {
                 key={order.id}
                 className="bg-white hover:bg-[#F5F5F5]/50 transition-colors duration-150"
               >
-                <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                  <StatusBadge statusCode={order.status_code} statusName={order.status_name} />
-                </td>
-                <td className="px-4 md:px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-4 whitespace-nowrap">
                   <Link
                     href={`/orders/${order.id}`}
                     className="text-[#00A3E1] hover:text-[#008bc4] font-medium transition-colors"
+                    style={{ fontSize: '13px' }}
                   >
                     {order.cust_order_number}
                   </Link>
                 </td>
-                <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-[#333F48]">
-                  {order.customer_name || order.customername || 'N/A'}
-                </td>
-                <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-[#6b7a85]">
+                <td className="px-4 py-4 whitespace-nowrap text-[#6b7a85]" style={{ fontSize: '13px' }}>
                   {order.cust_order_date
-                    ? format(new Date(order.cust_order_date), 'MMM d, yyyy')
+                    ? format(parseISO(order.cust_order_date), 'MMM d, yyyy')
                     : 'N/A'}
                 </td>
-                <td className="px-4 md:px-6 py-4 whitespace-nowrap">
+                <td className="px-4 py-4 whitespace-nowrap text-[#333F48]" style={{ fontSize: '13px' }}>
+                  {order.customer_name || order.customername || 'N/A'}
+                </td>
+              <td className="py-4 whitespace-nowrap text-[#6b7a85] font-mono" style={{ fontSize: '13px', paddingLeft: '16px', paddingRight: '8px', maxWidth: '120px' }}>
+                {order.ps_customer_id}
+              </td>
+              <td className="py-4 whitespace-nowrap text-[#333F48] text-right font-medium" style={{ fontSize: '13px', paddingLeft: '8px', paddingRight: '24px' }}>
+                {order.total_amount > 0
+                  ? new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency_code || 'USD' }).format(order.total_amount)
+                  : '—'}
+              </td>
+              <td className="py-4 whitespace-nowrap text-[#333F48]" style={{ fontSize: '13px', paddingLeft: '24px', paddingRight: '16px' }}>
+                {order.csr_name || '—'}
+              </td>
+                <td className="px-4 py-4 whitespace-nowrap">
+                  <StatusBadge statusCode={order.status_code} statusName={order.status_name} />
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     {order.price_issues_count > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-sm bg-amber-50 border border-amber-200 px-2.5 py-1 text-xs font-medium text-amber-700">
+                      <span className="inline-flex items-center gap-1 rounded-sm bg-amber-50 border border-amber-200 px-2.5 py-1 font-medium text-amber-700" style={{ fontSize: '11px' }}>
                         <AlertTriangle className="h-3 w-3" />
                         {order.price_issues_count} price
                       </span>
                     )}
                     {order.invalid_items_count > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-sm bg-red-50 border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700">
+                      <span className="inline-flex items-center gap-1 rounded-sm bg-red-50 border border-red-200 px-2.5 py-1 font-medium text-red-700" style={{ fontSize: '11px' }}>
                         <XCircle className="h-3 w-3" />
                         {order.invalid_items_count} invalid
                       </span>
                     )}
                     {order.price_issues_count === 0 && order.invalid_items_count === 0 && (
-                      <span className="inline-flex items-center gap-1 text-xs text-[#6b7a85]">
+                      <span className="inline-flex items-center gap-1 text-[#6b7a85]" style={{ fontSize: '11px' }}>
                         <CheckCircle className="h-3.5 w-3.5 text-green-500" />
                         No issues
                       </span>

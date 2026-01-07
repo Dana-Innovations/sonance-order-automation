@@ -26,7 +26,7 @@ export default async function DashboardLayout({
           <Sidebar />
           <div className="flex flex-1 flex-col overflow-hidden">
             <Header user={user} />
-            <main className="flex-1 overflow-y-auto p-6 md:p-8" style={{ backgroundColor: '#F5F5F5' }}>
+            <main className="flex-1 overflow-y-auto" style={{ backgroundColor: '#F5F5F5', padding: '0px 12px', paddingTop: '0px' }}>
               {children}
             </main>
           </div>

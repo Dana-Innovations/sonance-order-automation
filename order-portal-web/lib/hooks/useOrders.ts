@@ -7,11 +7,14 @@ type Order = Tables<'orders'> & {
   status_name: string
   price_issues_count: number
   invalid_items_count: number
+  total_amount: number
+  csr_name: string
 }
 
 export function useOrders({
   userEmail,
   statusFilter,
+  csrFilter,
   customerSearch,
   dateFrom,
   dateTo,
@@ -20,6 +23,7 @@ export function useOrders({
 }: {
   userEmail: string
   statusFilter: string[]
+  csrFilter: string
   customerSearch: string
   dateFrom: string
   dateTo: string
@@ -29,19 +33,19 @@ export function useOrders({
   const supabase = createClient()
 
   return useQuery({
-    queryKey: ['orders', userEmail, statusFilter, customerSearch, dateFrom, dateTo],
+    queryKey: ['orders', userEmail, statusFilter, csrFilter, customerSearch, dateFrom, dateTo],
     queryFn: async () => {
-      // First, get assigned customers for this CSR using email
-      const { data: assignments } = await supabase
-        .from('csr_assignments')
+      // Get customers assigned to this CSR (using csr_id on customers table)
+      const { data: customers } = await supabase
+        .from('customers')
         .select('ps_customer_id')
-        .eq('user_email', userEmail)
+        .eq('csr_id', userEmail)
 
-      if (!assignments || assignments.length === 0) {
+      if (!customers || customers.length === 0) {
         return []
       }
 
-      const customerIds = assignments.map((a) => a.ps_customer_id)
+      const customerIds = customers.map((c) => c.ps_customer_id)
 
       // Build query - using manual joins since foreign keys might not be set up
       let query = supabase
@@ -52,6 +56,11 @@ export function useOrders({
       // Apply filters
       if (statusFilter.length > 0) {
         query = query.in('status_code', statusFilter)
+      }
+
+      // Filter by CSR - only show orders assigned to the selected CSR
+      if (csrFilter && csrFilter.length > 0) {
+        query = query.eq('csr_id', csrFilter)
       }
 
       if (customerSearch) {
@@ -66,7 +75,9 @@ export function useOrders({
         query = query.lte('cust_order_date', dateTo)
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false })
+      query = query.order('created_at', { ascending: false })
+      
+      const { data, error } = await query
 
       if (error) throw error
 
@@ -89,15 +100,31 @@ export function useOrders({
           .eq('status_code', order.status_code)
           .single()
 
-        // Fetch order lines
+        // Fetch CSR name if csr_id exists
+        let csr_name = ''
+        if (order.csr_id) {
+          const { data: csr } = await supabase
+            .from('csrs')
+            .select('first_name, last_name')
+            .eq('email', order.csr_id)
+            .single()
+          if (csr) {
+            csr_name = `${csr.first_name} ${csr.last_name}`
+          }
+        }
+
+        // Fetch order lines with line totals for calculating order total
         const { data: lines } = await supabase
           .from('order_lines')
-          .select('id, cust_product_sku, cust_unit_price')
+          .select('id, cust_product_sku, cust_unit_price, cust_line_total')
           .eq('cust_order_number', order.cust_order_number)
 
         // Calculate price issues and invalid items (simplified for now)
         const price_issues_count = 0 // Will be calculated in detail view
         const invalid_items_count = 0 // Will be calculated in detail view
+
+        // Calculate total order amount from line items
+        const total_amount = lines?.reduce((sum, line) => sum + (line.cust_line_total || 0), 0) || 0
 
         enrichedOrders.push({
           ...order,
@@ -105,6 +132,8 @@ export function useOrders({
           status_name: status?.status_name || '',
           price_issues_count,
           invalid_items_count,
+          total_amount,
+          csr_name,
         } as Order)
       }
 

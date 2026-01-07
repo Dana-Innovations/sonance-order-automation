@@ -108,7 +108,11 @@ export default function LoginPage() {
           
           {/* Content */}
           <div style={{ position: 'relative', zIndex: 10 }} className="login-animate-in">
-            <SonanceLogo variant="light" style={{ height: '32px', width: 'auto' }} />
+            <img 
+              src="/logos/Sonance_Logo_2C_Light_RGB.png" 
+              alt="Sonance" 
+              style={{ height: '40px', width: 'auto' }} 
+            />
           </div>
           
           <div style={{ position: 'relative', zIndex: 10 }} className="login-slide-in">
@@ -120,7 +124,7 @@ export default function LoginPage() {
               letterSpacing: '-0.02em',
               marginBottom: '24px',
             }}>
-              Order Portal
+              The Order Genie
             </h1>
             <p style={{
               fontSize: '1.125rem',
@@ -129,14 +133,14 @@ export default function LoginPage() {
               lineHeight: 1.6,
               maxWidth: '400px',
             }}>
-              Streamline your order management with intelligent automation and seamless ERP integration.
+              Streamline your order management with agentic AI automation and seamless ERP integration.
             </p>
             <div style={{ 
               display: 'flex', 
               gap: '24px', 
               marginTop: '32px',
             }}>
-              {['Review', 'Validate', 'Export'].map((item) => (
+                {['Review', 'Edit', 'Upload'].map((item) => (
                 <div key={item} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ 
                     width: '6px', 
@@ -175,7 +179,11 @@ export default function LoginPage() {
           <div style={{ width: '100%', maxWidth: '400px' }} className="login-animate-in">
             {/* Mobile Logo */}
             <div className="login-mobile-logo" style={{ marginBottom: '48px', textAlign: 'center' }}>
-              <SonanceLogo variant="dark" style={{ height: '28px', width: 'auto', display: 'inline-block' }} />
+              <img 
+                src="/logos/Sonance_Logo_2C_Light_RGB.png" 
+                alt="Sonance" 
+                style={{ height: '36px', width: 'auto', display: 'inline-block' }} 
+              />
             </div>
 
             {/* Header */}

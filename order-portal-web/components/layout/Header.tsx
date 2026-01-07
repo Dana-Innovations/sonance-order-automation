@@ -1,9 +1,9 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { User } from '@supabase/supabase-js'
-import { LogOut } from 'lucide-react'
+import { LogOut, ArrowLeft } from 'lucide-react'
 
 // Sonance Logo SVG with "The Beam" (cyan A)
 function SonanceLogo({ className }: { className?: string }) {
@@ -55,7 +55,11 @@ function SonanceLogo({ className }: { className?: string }) {
 
 export function Header({ user }: { user: User }) {
   const router = useRouter()
+  const pathname = usePathname()
   const supabase = createClient()
+
+  // Check if we're on an order detail page (e.g., /orders/123)
+  const isOrderDetailPage = pathname?.startsWith('/orders/') && pathname !== '/orders'
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -63,31 +67,47 @@ export function Header({ user }: { user: User }) {
     router.refresh()
   }
 
+  const handleBackToOrders = () => {
+    router.push('/orders')
+  }
+
   return (
     <header 
-      className="border-b border-[#2a353d]"
+      className="border-b border-[#2a353d] w-full"
       style={{ backgroundColor: '#333F48' }}
     >
-      <div className="flex h-16 items-center justify-between px-6">
-        {/* Logo and Title */}
-        <div className="flex items-center gap-4">
-          <SonanceLogo className="h-7 w-auto text-white" />
-          <div className="hidden sm:flex items-center">
-            <span className="text-[#6b7a85] text-lg font-light">|</span>
-            <span className="ml-4 text-sm font-medium uppercase tracking-widest text-white/80">
-              Order Portal
-            </span>
-          </div>
+      <div className="relative flex items-center justify-between px-8" style={{ height: '53px' }}>
+        {/* Left spacer for balance */}
+        <div className="w-32" />
+
+        {/* Centered Logo */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <img 
+            src="/logos/Sonance_Logo_2C_Light_RGB.png" 
+            alt="Sonance" 
+            style={{ height: '40px', width: 'auto' }} 
+          />
         </div>
 
-        {/* User Info and Sign Out */}
-        <div className="flex items-center gap-4">
+        {/* User Info and Buttons */}
+        <div className="flex items-center" style={{ marginRight: '24px', gap: '24px' }}>
           <div className="hidden sm:block text-sm text-white/70">
             {user.email}
           </div>
+          {isOrderDetailPage && (
+            <button
+              onClick={handleBackToOrders}
+              className="flex items-center gap-2 px-4 py-2 text-xs font-medium tracking-wider text-white/70 transition-all hover:text-white hover:bg-white/10"
+              style={{ borderRadius: '20px', border: '1px solid rgba(255,255,255,0.2)' }}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Back to Orders</span>
+            </button>
+          )}
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 rounded-sm px-4 py-2 text-xs font-medium uppercase tracking-wider text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-medium tracking-wider text-white/70 transition-all hover:text-white hover:bg-white/10"
+            style={{ borderRadius: '20px', border: '1px solid rgba(255,255,255,0.2)' }}
           >
             <LogOut className="h-4 w-4" />
             <span className="hidden sm:inline">Sign out</span>

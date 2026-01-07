@@ -2,8 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { StatusFunnel } from './StatusFunnel'
-import { StuckOrders } from './StuckOrders'
+import StatusFunnel from './StatusFunnel'
+import StuckOrders from './StuckOrders'
 
 export function TrackingDashboard({ userEmail }: { userEmail: string }) {
   const supabase = createClient()

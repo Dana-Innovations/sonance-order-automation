@@ -14,6 +14,149 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          field_name: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          order_id: string | null
+          order_line_id: string | null
+          reason: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          field_name?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          order_id?: string | null
+          order_line_id?: string | null
+          reason?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          field_name?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          order_id?: string | null
+          order_line_id?: string | null
+          reason?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_log_order_line_id_fkey"
+            columns: ["order_line_id"]
+            isOneToOne: false
+            referencedRelation: "order_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      csr_assignments: {
+        Row: {
+          created_at: string | null
+          id: string
+          ps_customer_id: string
+          user_email: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          ps_customer_id: string
+          user_email: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          ps_customer_id?: string
+          user_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "csr_assignments_ps_customer_id_fkey"
+            columns: ["ps_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["ps_customer_id"]
+          },
+        ]
+      }
+      carriers: {
+        Row: {
+          carrier_id: string
+          carrier_descr: string
+          ship_via_code: string
+          ship_via_desc: string
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          carrier_id: string
+          carrier_descr: string
+          ship_via_code: string
+          ship_via_desc: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          carrier_id?: string
+          carrier_descr?: string
+          ship_via_code?: string
+          ship_via_desc?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      csrs: {
+        Row: {
+          created_at: string | null
+          email: string
+          first_name: string
+          is_active: boolean | null
+          last_name: string
+          slack_id: string | null
+          teams_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          first_name: string
+          is_active?: boolean | null
+          last_name: string
+          slack_id?: string | null
+          teams_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          first_name?: string
+          is_active?: boolean | null
+          last_name?: string
+          slack_id?: string | null
+          teams_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       customer_pricing: {
         Row: {
           created_at: string | null
@@ -71,6 +214,7 @@ export type Database = {
       customers: {
         Row: {
           created_at: string | null
+          csr_id: string | null
           customer_id: string
           customer_name: string
           is_active: boolean | null
@@ -84,6 +228,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          csr_id?: string | null
           customer_id?: string
           customer_name: string
           is_active?: boolean | null
@@ -97,6 +242,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          csr_id?: string | null
           customer_id?: string
           customer_name?: string
           is_active?: boolean | null
@@ -108,7 +254,15 @@ export type Database = {
           sharepoint_folder_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customers_csr_id_fkey"
+            columns: ["csr_id"]
+            isOneToOne: false
+            referencedRelation: "csrs"
+            referencedColumns: ["email"]
+          },
+        ]
       }
       order_lines: {
         Row: {
@@ -169,6 +323,48 @@ export type Database = {
           },
         ]
       }
+      order_status_history: {
+        Row: {
+          changed_at: string | null
+          changed_by: string | null
+          id: string
+          notes: string | null
+          order_id: string
+          status_code: string
+        }
+        Insert: {
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          notes?: string | null
+          order_id: string
+          status_code: string
+        }
+        Update: {
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string
+          status_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_status_history_status_code_fkey"
+            columns: ["status_code"]
+            isOneToOne: false
+            referencedRelation: "order_statuses"
+            referencedColumns: ["status_code"]
+          },
+        ]
+      }
       order_statuses: {
         Row: {
           description: string | null
@@ -192,7 +388,11 @@ export type Database = {
       }
       orders: {
         Row: {
+          cancelled_at: string | null
+          cancelled_by: string | null
+          cancelled_reason: string | null
           created_at: string | null
+          csr_id: string | null
           currency_code: string | null
           cust_carrier: string | null
           cust_header_notes: string | null
@@ -211,18 +411,24 @@ export type Database = {
           email_received_at: string | null
           email_sender: string | null
           email_subject: string | null
+          erp_processed_at: string | null
+          erp_processed_by: string | null
+          exported_at: string | null
+          exported_by: string | null
           id: string
           pdf_file_url: string | null
           ps_customer_id: string
           ps_order_number: string | null
           shipto_name: string | null
-          Son_Carrier_ID: string | null
-          Son_Ship_via: string | null
           status_code: string
           updated_at: string | null
         }
         Insert: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
           created_at?: string | null
+          csr_id?: string | null
           currency_code?: string | null
           cust_carrier?: string | null
           cust_header_notes?: string | null
@@ -241,18 +447,24 @@ export type Database = {
           email_received_at?: string | null
           email_sender?: string | null
           email_subject?: string | null
+          erp_processed_at?: string | null
+          erp_processed_by?: string | null
+          exported_at?: string | null
+          exported_by?: string | null
           id?: string
           pdf_file_url?: string | null
           ps_customer_id: string
           ps_order_number?: string | null
           shipto_name?: string | null
-          Son_Carrier_ID?: string | null
-          Son_Ship_via?: string | null
           status_code?: string
           updated_at?: string | null
         }
         Update: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
           created_at?: string | null
+          csr_id?: string | null
           currency_code?: string | null
           cust_carrier?: string | null
           cust_header_notes?: string | null
@@ -271,17 +483,26 @@ export type Database = {
           email_received_at?: string | null
           email_sender?: string | null
           email_subject?: string | null
+          erp_processed_at?: string | null
+          erp_processed_by?: string | null
+          exported_at?: string | null
+          exported_by?: string | null
           id?: string
           pdf_file_url?: string | null
           ps_customer_id?: string
           ps_order_number?: string | null
           shipto_name?: string | null
-          Son_Carrier_ID?: string | null
-          Son_Ship_via?: string | null
           status_code?: string
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_csr_id_fkey"
+            columns: ["csr_id"]
+            isOneToOne: false
+            referencedRelation: "csrs"
+            referencedColumns: ["email"]
+          },
           {
             foreignKeyName: "orders_status_code_fkey"
             columns: ["status_code"]
@@ -500,4 +721,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

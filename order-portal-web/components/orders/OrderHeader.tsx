@@ -1,8 +1,8 @@
 'use client'
 
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import { format } from 'date-fns'
-import { useState } from 'react'
+import { format, parseISO } from 'date-fns'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Tables } from '@/lib/types/database'
 import { useRouter } from 'next/navigation'
@@ -99,6 +99,64 @@ export function OrderHeader({
   })
   const [carrier, setCarrier] = useState('')
   const [shipVia, setShipVia] = useState('')
+  const [shipToName, setShipToName] = useState('')
+  const [distinctCarriers, setDistinctCarriers] = useState<{ carrier_id: string; carrier_descr: string }[]>([])
+  const [shipViaOptions, setShipViaOptions] = useState<{ ship_via_code: string; ship_via_desc: string }[]>([])
+  const [notesExpanded, setNotesExpanded] = useState(false)
+
+  const supabase = createClient()
+  const router = useRouter()
+
+  // Fetch distinct carriers when component mounts
+  useEffect(() => {
+    const fetchCarriers = async () => {
+      const { data } = await supabase
+        .from('carriers')
+        .select('carrier_id, carrier_descr')
+        .order('carrier_id')
+      
+      if (data) {
+        // Get distinct carriers (unique carrier_id values)
+        const uniqueCarriers = data.reduce((acc, curr) => {
+          if (!acc.find(c => c.carrier_id === curr.carrier_id)) {
+            acc.push({ carrier_id: curr.carrier_id, carrier_descr: curr.carrier_descr })
+          }
+          return acc
+        }, [] as { carrier_id: string; carrier_descr: string }[])
+        setDistinctCarriers(uniqueCarriers)
+      }
+    }
+    fetchCarriers()
+  }, [])
+
+  // Fetch ship via options when carrier changes
+  useEffect(() => {
+    const fetchShipViaOptions = async () => {
+      if (!carrier) {
+        setShipViaOptions([])
+        setShipVia('') // Clear ship via when no carrier selected
+        return
+      }
+      
+      const { data } = await supabase
+        .from('carriers')
+        .select('ship_via_code, ship_via_desc')
+        .eq('carrier_id', carrier)
+        .order('ship_via_code')
+      
+      if (data) {
+        setShipViaOptions(data)
+        // Clear ship via if current value is not valid for new carrier
+        if (shipVia && !data.find(s => s.ship_via_code === shipVia)) {
+          setShipVia('')
+        }
+      } else {
+        setShipViaOptions([])
+        setShipVia('')
+      }
+    }
+    fetchShipViaOptions()
+  }, [carrier])
 
   // When entering edit mode, pre-populate fields that have values, leave blank fields empty
   const handleStartEdit = () => {
@@ -113,14 +171,20 @@ export function OrderHeader({
     })
     setCarrier(order.cust_carrier || '')
     setShipVia(order.cust_ship_via || '')
+    setShipToName(order.shipto_name || '')
     setIsEditing(true)
   }
-  const supabase = createClient()
-  const router = useRouter()
 
   const handleSave = async () => {
+    // Validation: If carrier is selected, ship via must also be selected
+    if (carrier.trim() && !shipVia.trim()) {
+      alert('Ship Via is required when a Carrier is selected. Please select a Ship Via code.')
+      return
+    }
+
     // Save the values as entered (trimmed)
     const updatedData = {
+      shipto_name: shipToName.trim() || null,
       cust_shipto_address_line1: address.line1.trim() || null,
       cust_shipto_address_line2: address.line2.trim() || null,
       cust_shipto_address_line3: address.line3.trim() || null,
@@ -149,6 +213,7 @@ export function OrderHeader({
       action_type: 'field_edit',
       field_name: 'ship_to_address',
       old_value: JSON.stringify({
+        shipto_name: order.shipto_name,
         line1: order.cust_shipto_address_line1,
         line2: order.cust_shipto_address_line2,
         line3: order.cust_shipto_address_line3,
@@ -160,6 +225,7 @@ export function OrderHeader({
         ship_via: order.cust_ship_via,
       }),
       new_value: JSON.stringify({
+        shipto_name: updatedData.shipto_name,
         line1: updatedData.cust_shipto_address_line1,
         line2: updatedData.cust_shipto_address_line2,
         line3: updatedData.cust_shipto_address_line3,
@@ -180,44 +246,54 @@ export function OrderHeader({
 
   return (
     <div className="rounded-sm border border-[#D9D9D6] bg-white p-5 space-y-4">
-      {/* Header Row: Order Info */}
-      <div className="flex items-center justify-between flex-wrap text-sm" style={{ gap: '1rem' }}>
-        {/* Left side: Order details */}
-        <div className="flex items-center flex-wrap" style={{ gap: '1.5rem' }}>
-          <div>
-            <span style={{ fontWeight: 700, color: '#333F48' }}>Customer:</span>{' '}
-            <span style={{ color: '#333F48' }}>
-              {order.customers?.customer_name || order.customername || 'N/A'}
-            </span>
-          </div>
-          <div>
-            <span style={{ fontWeight: 700, color: '#333F48' }}>Cust. Order #:</span>{' '}
-            <span style={{ color: '#333F48' }}>{order.cust_order_number}</span>
-          </div>
-          <div>
-            <span style={{ fontWeight: 700, color: '#333F48' }}>Order Date:</span>{' '}
-            <span style={{ color: '#333F48' }}>
-              {order.cust_order_date
-                ? format(new Date(order.cust_order_date), 'MMM d, yyyy')
-                : 'N/A'}
-            </span>
-          </div>
-          {order.ps_order_number && (
-            <div>
-              <span style={{ fontWeight: 700, color: '#333F48' }}>PS Order #:</span>{' '}
-              <span style={{ color: '#333F48' }}>{order.ps_order_number}</span>
-            </div>
-          )}
-        </div>
+      {/* Header Info - Table layout for proper alignment */}
+      <div className="text-sm" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        {/* Left side: Order details as table */}
+        <table style={{ borderCollapse: 'collapse', marginBottom: '6px' }}>
+          <tbody>
+            <tr>
+              <td style={{ fontWeight: 700, color: '#333F48', textAlign: 'right', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>Customer:</td>
+              <td style={{ color: '#333F48', paddingRight: '24px', paddingBottom: '6px' }}>{order.customers?.customer_name || order.customername || 'N/A'}</td>
+              <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>Cust. Order #:</td>
+              <td style={{ color: '#333F48', paddingRight: '24px', paddingBottom: '6px' }}>{order.cust_order_number}</td>
+              <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>Cust Ord Date:</td>
+              <td style={{ color: '#333F48', paddingRight: '24px', paddingBottom: '6px' }}>{order.cust_order_date ? format(parseISO(order.cust_order_date), 'MMM d, yyyy') : 'N/A'}</td>
+              {order.ps_order_number && (
+                <>
+                  <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>PS Order #:</td>
+                  <td style={{ color: '#333F48', paddingBottom: '6px' }}>{order.ps_order_number}</td>
+                </>
+              )}
+            </tr>
+            <tr>
+              <td style={{ fontWeight: 700, color: '#333F48', textAlign: 'right', paddingRight: '6px', whiteSpace: 'nowrap' }}>From Email:</td>
+              <td style={{ color: '#333F48', paddingRight: '24px' }}>{order.email_sender || '—'}</td>
+              <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', whiteSpace: 'nowrap' }}>PS Account ID:</td>
+              <td style={{ color: '#333F48', paddingRight: '24px' }}>{order.ps_customer_id || '—'}</td>
+              <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', whiteSpace: 'nowrap' }}>Email Date:</td>
+              <td style={{ color: '#333F48' }}>{order.email_received_at ? format(parseISO(order.email_received_at), 'MMM d, yyyy') : '—'}</td>
+            </tr>
+          </tbody>
+        </table>
 
-        {/* Right side: Order Status */}
-        <div className="flex items-center" style={{ gap: '0.5rem' }}>
-          <span style={{ fontWeight: 700, color: '#333F48' }}>Order Status:</span>
-          <StatusBadge
-            statusCode={order.status_code}
-            statusName={order.order_statuses?.status_name || ''}
-          />
-        </div>
+        {/* Right side: Order Status and Currency */}
+        <table style={{ borderCollapse: 'collapse' }}>
+          <tbody>
+            <tr>
+              <td style={{ fontWeight: 700, color: '#333F48', textAlign: 'right', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>Order Status:</td>
+              <td style={{ paddingBottom: '6px' }}>
+                <StatusBadge
+                  statusCode={order.status_code}
+                  statusName={order.order_statuses?.status_name || ''}
+                />
+              </td>
+            </tr>
+            <tr>
+              <td style={{ fontWeight: 700, color: '#333F48', textAlign: 'right', paddingRight: '6px', whiteSpace: 'nowrap' }}>Currency $:</td>
+              <td style={{ color: '#333F48' }}>{order.currency_code || '—'}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       {isCancelled && (
@@ -226,7 +302,7 @@ export function OrderHeader({
             Order Cancelled
             {order.cancelled_at && (
               <span className="ml-2 text-red-600 font-normal">
-                on {format(new Date(order.cancelled_at), 'MMM d, yyyy')}
+                on {format(parseISO(order.cancelled_at), 'MMM d, yyyy')}
               </span>
             )}
           </p>
@@ -238,7 +314,7 @@ export function OrderHeader({
 
       {/* Ship-to Address and Carrier & Ship Method */}
       <div className="pt-4 border-t border-[#D9D9D6]">
-        <div className="flex flex-wrap gap-6">
+        <div className="flex flex-wrap gap-6" style={{ position: 'relative', paddingBottom: '40px' }}>
           {/* Ship-to Address Section */}
           <div className="flex-shrink-0">
             <h3 className="font-semibold uppercase tracking-widest text-[#333F48] mb-1" style={{ fontSize: '12px' }}>
@@ -256,6 +332,22 @@ export function OrderHeader({
                   </thead>
                 )}
                 <tbody>
+                  <tr>
+                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Ship To Name:</td>
+                    <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.shipto_name || '—'}</td>
+                    {isEditing && (
+                      <td>
+                        <input
+                          type="text"
+                          value={shipToName}
+                          onChange={(e) => setShipToName(e.target.value)}
+                          placeholder="Ship To Name"
+                          className="w-full rounded-sm border border-[#D9D9D6] bg-white px-2 py-1 text-xs text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
+                          style={{ minWidth: '180px' }}
+                        />
+                      </td>
+                    )}
+                  </tr>
                   <tr>
                     <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Addr Line 1:</td>
                     <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_address_line1 || '—'}</td>
@@ -407,18 +499,28 @@ export function OrderHeader({
                 )}
                 <tbody>
                   <tr>
+                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Cust Ship Meth:</td>
+                    <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.custshipmethod || '—'}</td>
+                    {isEditing && <td></td>}
+                  </tr>
+                  <tr>
                     <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Carrier:</td>
                     <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_carrier || '—'}</td>
                     {isEditing && (
                       <td>
-                        <input
-                          type="text"
+                        <select
                           value={carrier}
                           onChange={(e) => setCarrier(e.target.value)}
-                          placeholder="Carrier"
                           className="w-full rounded-sm border border-[#D9D9D6] bg-white px-2 py-1 text-xs text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
                           style={{ minWidth: '150px' }}
-                        />
+                        >
+                          <option value="">Select Carrier</option>
+                          {distinctCarriers.map((c) => (
+                            <option key={c.carrier_id} value={c.carrier_id}>
+                              {c.carrier_id} - {c.carrier_descr}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                     )}
                   </tr>
@@ -427,14 +529,20 @@ export function OrderHeader({
                     <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_ship_via || '—'}</td>
                     {isEditing && (
                       <td>
-                        <input
-                          type="text"
+                        <select
                           value={shipVia}
                           onChange={(e) => setShipVia(e.target.value)}
-                          placeholder="Ship Via Code"
                           className="w-full rounded-sm border border-[#D9D9D6] bg-white px-2 py-1 text-xs text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
                           style={{ minWidth: '150px' }}
-                        />
+                          disabled={!carrier}
+                        >
+                          <option value="">{carrier ? 'Select Ship Via' : 'Select Carrier first'}</option>
+                          {shipViaOptions.map((s) => (
+                            <option key={s.ship_via_code} value={s.ship_via_code}>
+                              {s.ship_via_code} - {s.ship_via_desc}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                     )}
                   </tr>
@@ -442,50 +550,120 @@ export function OrderHeader({
               </table>
             </div>
           </div>
-        </div>
 
-        {/* Edit/Save buttons */}
-        <div className="mt-3">
-          {!isCancelled && !isEditing && (
-            <button
-              onClick={handleStartEdit}
-              className="text-[#00A3E1] hover:text-[#008ac4] font-medium transition-colors"
-              style={{ fontSize: '12px', marginLeft: '3rem' }}
-            >
-              Edit
-            </button>
-          )}
-          {isEditing && (
-            <div className="flex gap-2" style={{ marginLeft: '3rem' }}>
-              <button
-                onClick={handleSave}
-                className="px-3 py-1.5 bg-[#00A3E1] text-white rounded-sm text-xs font-medium hover:bg-[#008ac4] transition-colors"
-              >
-                Save Changes
-              </button>
-              <button
-                onClick={() => {
-                  setIsEditing(false)
-                  // Reset to original values
-                  setAddress({
-                    line1: order.cust_shipto_address_line1 || '',
-                    line2: order.cust_shipto_address_line2 || '',
-                    line3: order.cust_shipto_address_line3 || '',
-                    city: order.cust_shipto_city || '',
-                    state: order.cust_shipto_state || '',
-                    postal: order.cust_shipto_postal_code || '',
-                    country: order.cust_shipto_country || '',
-                  })
-                  setCarrier(order.cust_carrier || '')
-                  setShipVia(order.cust_ship_via || '')
-                }}
-                className="px-3 py-1.5 bg-[#D9D9D6] text-[#333F48] rounded-sm text-xs font-medium hover:bg-[#c0c0bd] transition-colors"
-              >
-                Cancel
-              </button>
+          {/* Edit/Save/Cancel Buttons - Lower Right */}
+          {!isCancelled && (
+            <div style={{ 
+              position: 'absolute', 
+              bottom: '5px', 
+              right: '10px',
+              display: 'flex',
+              gap: '8px'
+            }}>
+              {!isEditing ? (
+                <button
+                  onClick={handleStartEdit}
+                  className="py-1.5 text-xs font-medium transition-colors"
+                  style={{ 
+                    border: '1px solid #00A3E1', 
+                    borderRadius: '20px', 
+                    backgroundColor: 'white',
+                    color: '#00A3E1',
+                    paddingLeft: '21px',
+                    paddingRight: '21px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#00A3E1'
+                    e.currentTarget.style.color = 'white'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white'
+                    e.currentTarget.style.color = '#00A3E1'
+                  }}
+                >
+                  Edit
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleSave}
+                    className="px-4 py-1.5 text-xs font-medium transition-colors hover:bg-[#008ac4]"
+                    style={{ 
+                      border: '1px solid #00A3E1', 
+                      borderRadius: '4px', 
+                      backgroundColor: '#00A3E1',
+                      color: 'white'
+                    }}
+                  >
+                    Save Changes
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsEditing(false)
+                      setShipToName(order.shipto_name || '')
+                      setAddress({
+                        line1: order.cust_shipto_address_line1 || '',
+                        line2: order.cust_shipto_address_line2 || '',
+                        line3: order.cust_shipto_address_line3 || '',
+                        city: order.cust_shipto_city || '',
+                        state: order.cust_shipto_state || '',
+                        postal: order.cust_shipto_postal_code || '',
+                        country: order.cust_shipto_country || '',
+                      })
+                      setCarrier(order.cust_carrier || '')
+                      setShipVia(order.cust_ship_via || '')
+                    }}
+                    className="px-4 py-1.5 text-xs font-medium transition-colors hover:bg-[#F5F5F5]"
+                    style={{ 
+                      border: '1px solid #D9D9D6', 
+                      borderRadius: '4px', 
+                      backgroundColor: 'white',
+                      color: '#333F48'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
+
+        {/* Order Header Notes Panel - Collapsible */}
+        {order.cust_header_notes && (
+          <div className="mt-4 pt-4 border-t border-[#D9D9D6]">
+            <button
+              onClick={() => setNotesExpanded(!notesExpanded)}
+              className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
+              style={{ background: 'none', border: 'none', padding: 0 }}
+            >
+              <h3 className="font-semibold uppercase tracking-widest text-[#333F48]" style={{ fontSize: '12px' }}>
+                Order Header Notes
+              </h3>
+              <span 
+                style={{ 
+                  fontSize: '16px', 
+                  color: '#00A3E1',
+                  transition: 'transform 0.2s',
+                  transform: notesExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                  display: 'inline-block',
+                  marginLeft: '12px'
+                }}
+              >
+                ▶
+              </span>
+            </button>
+            {notesExpanded && (
+              <div 
+                className="rounded-sm border border-[#D9D9D6] bg-[#F9F9F9] p-3 mt-2"
+                style={{ fontSize: '12px', color: '#333F48', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}
+              >
+                {order.cust_header_notes}
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   )

@@ -18,14 +18,14 @@ export default async function OrdersPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-light tracking-tight text-[#333F48]">
+      <div style={{ lineHeight: '1.2', marginLeft: '24px', marginTop: '0px', paddingTop: '4px' }}>
+        <h1 className="text-2xl font-light tracking-tight text-[#333F48]" style={{ margin: '0px' }}>
           Orders
         </h1>
-        <p className="mt-1 text-sm text-[#6b7a85]">
-          Review and validate customer sales orders
+        <p className="text-sm text-[#6b7a85]" style={{ margin: '0px' }}>
+          Review, validate & edit new customer orders
         </p>
       </div>
       

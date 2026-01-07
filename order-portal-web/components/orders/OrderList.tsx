@@ -7,7 +7,9 @@ import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 
 export function OrderList({ userEmail }: { userEmail: string }) {
-  const [statusFilter, setStatusFilter] = useState<string[]>([])
+  // Default to showing only actionable orders: NEW, REVIEWED NO CHANGES, REVIEWED WITH CHANGES
+  const [statusFilter, setStatusFilter] = useState<string[]>(['01', '02', '03'])
+  const [csrFilter, setCsrFilter] = useState('')
   const [customerSearch, setCustomerSearch] = useState('')
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
@@ -17,6 +19,7 @@ export function OrderList({ userEmail }: { userEmail: string }) {
   const { data: orders, isLoading, error } = useOrders({
     userEmail,
     statusFilter,
+    csrFilter,
     customerSearch,
     dateFrom,
     dateTo,
@@ -53,6 +56,11 @@ export function OrderList({ userEmail }: { userEmail: string }) {
         onStatusFilterChange={(filters) => {
           setStatusFilter(filters)
           setPage(1) // Reset to first page when filters change
+        }}
+        csrFilter={csrFilter}
+        onCsrFilterChange={(csr) => {
+          setCsrFilter(csr)
+          setPage(1)
         }}
         customerSearch={customerSearch}
         onCustomerSearchChange={(search) => {

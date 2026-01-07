@@ -59,11 +59,12 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 text-xs font-medium',
+        'inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 font-medium',
         style.bg,
         style.text,
         style.border
       )}
+      style={{ fontSize: '11px' }}
     >
       <span className={cn('h-1.5 w-1.5 rounded-full', style.dot)} />
       {statusName || statusCode}

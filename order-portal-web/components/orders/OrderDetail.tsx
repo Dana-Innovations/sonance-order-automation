@@ -64,7 +64,7 @@ export function OrderDetail({
         }
       `}</style>
 
-      <div className="order-detail-container">
+      <div className="order-detail-container" style={{ paddingTop: '5px' }}>
         {/* Left Panel: Order Content */}
         <div className="order-detail-left space-y-6">
           <OrderHeader order={order} userId={userId} />

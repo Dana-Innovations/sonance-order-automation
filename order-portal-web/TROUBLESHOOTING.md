@@ -73,3 +73,4 @@ npm run dev
 2. **Check browser console** (F12) for runtime errors
 3. **Share the exact error message** - it helps identify the specific issue
 
+
