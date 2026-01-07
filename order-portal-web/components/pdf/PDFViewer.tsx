@@ -190,7 +190,7 @@ export function PDFViewer({ pdfUrl }: { pdfUrl: string | null }) {
       </div>
 
       {/* PDF Content */}
-      <div className="overflow-auto bg-[#F5F5F5]" style={{ maxHeight: 'calc(100vh - 180px)', minHeight: '400px' }}>
+      <div className="overflow-auto bg-[#F5F5F5]" style={{ maxHeight: 'calc(100vh - 100px)', minHeight: '700px' }}>
         <div className="p-4 flex justify-center">
           <Document
             file={pdfData}

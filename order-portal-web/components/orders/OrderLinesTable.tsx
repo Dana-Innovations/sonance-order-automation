@@ -74,8 +74,8 @@ export function OrderLinesTable({
   return (
     <div className="rounded-lg border border-border bg-card p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-card-foreground">Order Lines</h2>
-        <div className="text-sm text-muted-foreground">
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 600 }} className="text-card-foreground">Order Lines</h2>
+        <div style={{ fontSize: '0.75rem' }} className="text-muted-foreground">
           Total: <span className="font-medium text-foreground">${calculateTotal().toFixed(2)}</span>
         </div>
       </div>
@@ -83,66 +83,59 @@ export function OrderLinesTable({
         <table className="w-full">
           <thead className="bg-muted">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-muted-foreground">
+              <th style={{ fontSize: '0.65rem', padding: '8px 4px', width: '40px', textAlign: 'center' }} className="font-medium uppercase text-muted-foreground">
                 Line
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-muted-foreground">
-                Item
+              <th style={{ fontSize: '0.65rem', padding: '8px 6px', width: '90px' }} className="text-left font-medium uppercase text-muted-foreground">
+                Cust Item
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-muted-foreground">
-                Description
+              <th style={{ fontSize: '0.65rem', padding: '8px 6px', width: '280px' }} className="text-left font-medium uppercase text-muted-foreground">
+                Cust Description
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-muted-foreground">
+              <th style={{ fontSize: '0.65rem', padding: '8px 6px', width: '50px', textAlign: 'right' }} className="font-medium uppercase text-muted-foreground">
                 Qty
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-muted-foreground">
+              <th style={{ fontSize: '0.65rem', padding: '8px 4px', width: '40px' }} className="text-left font-medium uppercase text-muted-foreground">
                 UOM
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-muted-foreground">
+              <th style={{ fontSize: '0.65rem', padding: '8px 4px', width: '70px', textAlign: 'right' }} className="font-medium uppercase text-muted-foreground">
                 Unit Price
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-muted-foreground">
+              <th style={{ fontSize: '0.65rem', padding: '8px 6px', width: '70px', textAlign: 'right' }} className="font-medium uppercase text-muted-foreground">
                 Total
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-muted-foreground">
-                Status
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-muted-foreground">
+              <th style={{ fontSize: '0.65rem', padding: '8px 8px' }} className="text-left font-medium uppercase text-muted-foreground">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {order.order_lines.map((line) => (
-              <tr key={line.id} className="hover:bg-muted/50">
-                <td className="px-4 py-3 text-sm text-foreground">
+            {order.order_lines.map((line, index) => (
+              <tr key={line.id} className="hover:bg-muted/50" style={{ marginBottom: index < order.order_lines.length - 1 ? '6px' : '0' }}>
+                <td style={{ fontSize: '0.75rem', padding: '10px 4px', verticalAlign: 'top', textAlign: 'center', width: '40px' }} className="text-foreground">
                   {line.cust_line_number}
                 </td>
-                <td className="px-4 py-3 text-sm text-foreground">
+                <td style={{ fontSize: '0.75rem', padding: '10px 6px', verticalAlign: 'top', width: '90px' }} className="text-foreground">
                   {line.cust_product_sku || 'N/A'}
                 </td>
-                <td className="px-4 py-3 text-sm text-foreground">
-                  {line.cust_line_desc || 'N/A'}
+                <td style={{ fontSize: '0.75rem', padding: '10px 6px', verticalAlign: 'top', maxWidth: '280px', lineHeight: '1.4' }} className="text-foreground">
+                  <div style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
+                    {line.cust_line_desc || 'N/A'}
+                  </div>
                 </td>
-                <td className="px-4 py-3 text-sm text-foreground">
-                  {line.cust_quantity?.toFixed(2) || '0.00'}
+                <td style={{ fontSize: '0.75rem', padding: '10px 6px', verticalAlign: 'top', textAlign: 'right', width: '50px' }} className="text-foreground">
+                  {Math.round(line.cust_quantity || 0)}
                 </td>
-                <td className="px-4 py-3 text-sm text-foreground">
+                <td style={{ fontSize: '0.75rem', padding: '10px 4px', verticalAlign: 'top', width: '40px' }} className="text-foreground">
                   {line.cust_uom || 'N/A'}
                 </td>
-                <td className="px-4 py-3 text-sm text-foreground">
+                <td style={{ fontSize: '0.75rem', padding: '10px 4px', verticalAlign: 'top', textAlign: 'right', width: '70px' }} className="text-foreground">
                   ${line.cust_unit_price?.toFixed(2) || '0.00'}
                 </td>
-                <td className="px-4 py-3 text-sm font-medium text-foreground">
+                <td style={{ fontSize: '0.75rem', padding: '10px 6px', verticalAlign: 'top', textAlign: 'right', width: '70px' }} className="font-medium text-foreground">
                   ${line.cust_line_total?.toFixed(2) || '0.00'}
                 </td>
-                <td className="px-4 py-3">
-                  <PriceValidation
-                    line={line}
-                    pricingData={pricingData?.[line.id]}
-                  />
-                </td>
-                <td className="px-4 py-3">
+                <td style={{ padding: '10px 8px', verticalAlign: 'top' }}>
                   <LineItemEditor line={line} orderId={order.id} userId={userId} />
                 </td>
               </tr>
@@ -153,5 +146,3 @@ export function OrderLinesTable({
     </div>
   )
 }
-
-

@@ -42,13 +42,13 @@ export function OrderDetail({
             min-width: 0;
           }
           .order-detail-right {
-            width: 450px;
+            width: 640px;
             flex-shrink: 0;
           }
           .order-detail-right-inner {
             position: sticky;
             top: 1.5rem;
-            max-height: calc(100vh - 120px);
+            max-height: calc(100vh - 80px);
           }
         }
         @media (max-width: 1023px) {
