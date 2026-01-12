@@ -56,3 +56,5 @@ fs.writeFileSync(outputPath, outputLines.join('\n'));
 console.log('Created formatted CSV with ' + (outputLines.length - 1) + ' data rows');
 console.log('Output file: ' + outputPath);
 
+
+

@@ -4,8 +4,9 @@ import { lazy, Suspense } from 'react'
 import { OrderHeader } from './OrderHeader'
 import { OrderLinesTable } from './OrderLinesTable'
 import { OrderActions } from './OrderActions'
+import { OrderNavigation } from './OrderNavigation'
 import { Tables } from '@/lib/types/database'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Zap, FileText } from 'lucide-react'
 
 // Lazy load PDF viewer for better performance
 const PDFViewer = lazy(() =>
@@ -71,16 +72,20 @@ export function OrderDetail({
           <OrderLinesTable order={order} userId={userId} />
           
           {/* Footer Panel: Action Buttons */}
-          {!isCancelled && (
-            <div className="rounded-sm border border-[#D9D9D6] bg-white p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-widest text-[#6b7a85]">
-                  Actions
-                </span>
+          <div className="rounded-md shadow-sm border border-gray-200 bg-white" style={{ padding: '8px 0 12px 0' }}>
+            <div className="flex items-start justify-between">
+              <span className="flex items-center uppercase tracking-widest text-[#333F48]" style={{ fontSize: '12px', fontWeight: 700 }}>
+                <Zap className="h-4 w-4 text-[#00A3E1]" style={{ marginRight: '10px' }} />
+                ACTIONS
+              </span>
+              <div className="flex-1 flex justify-center">
                 <OrderActions order={order} userId={userId} />
               </div>
             </div>
-          )}
+          </div>
+
+          {/* Order Navigation */}
+          <OrderNavigation currentOrderId={order.id} />
         </div>
 
         {/* Right Panel: PDF Viewer */}
@@ -88,10 +93,11 @@ export function OrderDetail({
           <div className="order-detail-right-inner">
             <Suspense
               fallback={
-                <div className="rounded-sm border border-[#D9D9D6] bg-white">
+                <div className="rounded-md shadow-sm border border-gray-200 bg-white">
                   <div className="flex items-center justify-between border-b border-[#D9D9D6] px-4 py-3">
-                    <span className="text-xs font-medium uppercase tracking-widest text-[#333F48]">
-                      Order PDF
+                    <span className="flex items-center uppercase tracking-widest text-[#333F48]" style={{ fontSize: '12px', fontWeight: 700 }}>
+                      <FileText className="h-4 w-4 text-[#00A3E1]" style={{ marginRight: '10px' }} />
+                      ORDER PDF
                     </span>
                   </div>
                   <div className="flex flex-col items-center justify-center h-96 gap-3">

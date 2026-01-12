@@ -277,9 +277,12 @@ export type Database = {
           cust_unit_price: number | null
           cust_uom: string | null
           id: string
+          line_status: string | null
           ps_order_number: string | null
-          sonance_prod_trans: string | null
-          sonance_product_orig: string | null
+          sonance_prod_sku: string | null
+          sonance_quantity: number | null
+          sonance_uom: string | null
+          sonance_unit_price: number | null
         }
         Insert: {
           created_at?: string | null
@@ -293,9 +296,12 @@ export type Database = {
           cust_unit_price?: number | null
           cust_uom?: string | null
           id?: string
+          line_status?: string | null
           ps_order_number?: string | null
-          sonance_prod_trans?: string | null
-          sonance_product_orig?: string | null
+          sonance_prod_sku?: string | null
+          sonance_quantity?: number | null
+          sonance_uom?: string | null
+          sonance_unit_price?: number | null
         }
         Update: {
           created_at?: string | null
@@ -309,9 +315,12 @@ export type Database = {
           cust_unit_price?: number | null
           cust_uom?: string | null
           id?: string
+          line_status?: string | null
           ps_order_number?: string | null
-          sonance_prod_trans?: string | null
-          sonance_product_orig?: string | null
+          sonance_prod_sku?: string | null
+          sonance_quantity?: number | null
+          sonance_uom?: string | null
+          sonance_unit_price?: number | null
         }
         Relationships: [
           {

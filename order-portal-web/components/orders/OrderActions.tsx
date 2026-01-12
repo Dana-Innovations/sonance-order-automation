@@ -11,6 +11,9 @@ const ValidateOrderModal = lazy(() =>
 const CancelOrderModal = lazy(() =>
   import('./CancelOrderModal').then((mod) => ({ default: mod.CancelOrderModal }))
 )
+const RestoreOrderModal = lazy(() =>
+  import('./RestoreOrderModal').then((mod) => ({ default: mod.RestoreOrderModal }))
+)
 const AuditLogModal = lazy(() =>
   import('@/components/audit/AuditLogModal').then((mod) => ({ default: mod.AuditLogModal }))
 )
@@ -29,27 +32,61 @@ export function OrderActions({
 }) {
   const [showValidate, setShowValidate] = useState(false)
   const [showCancel, setShowCancel] = useState(false)
+  const [showRestore, setShowRestore] = useState(false)
   const [showAuditLog, setShowAuditLog] = useState(false)
   const [showExport, setShowExport] = useState(false)
 
   const canValidate = order.status_code === '02' // Under Review
   const canExport = order.status_code === '03' // Validated
-  const canEnterERP = order.status_code === '04' // Exported
+  const canEnterERP = false // ERP number entry removed
+  const canCancel = order.status_code !== '06' && !order.ps_order_number && order.status_code !== '05' && order.status_code !== '04'
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap justify-center" style={{ gap: '24px' }}>
       {canValidate && (
         <button
           onClick={() => setShowValidate(true)}
-          className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700"
+          className="py-1.5 text-xs font-medium transition-colors"
+          style={{
+            border: '1px solid #00A3E1',
+            borderRadius: '20px',
+            backgroundColor: 'white',
+            color: '#00A3E1',
+            paddingLeft: '16px',
+            paddingRight: '16px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#00A3E1'
+            e.currentTarget.style.color = 'white'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'white'
+            e.currentTarget.style.color = '#00A3E1'
+          }}
         >
-          Validate Order
+          Post Order
         </button>
       )}
       {canExport && (
         <button
           onClick={() => setShowExport(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+          className="py-1.5 text-xs font-medium transition-colors"
+          style={{
+            border: '1px solid #00A3E1',
+            borderRadius: '20px',
+            backgroundColor: 'white',
+            color: '#00A3E1',
+            paddingLeft: '16px',
+            paddingRight: '16px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#00A3E1'
+            e.currentTarget.style.color = 'white'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'white'
+            e.currentTarget.style.color = '#00A3E1'
+          }}
         >
           Export to XML
         </button>
@@ -57,14 +94,70 @@ export function OrderActions({
       {canEnterERP && <ERPNumberInput order={order} userId={userId} />}
       <button
         onClick={() => setShowAuditLog(true)}
-        className="px-4 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium hover:bg-muted/80"
+        className="py-1.5 text-xs font-medium transition-colors"
+        style={{
+          border: '1px solid #00A3E1',
+          borderRadius: '20px',
+          backgroundColor: 'white',
+          color: '#00A3E1',
+          paddingLeft: '16px',
+          paddingRight: '16px'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = '#00A3E1'
+          e.currentTarget.style.color = 'white'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'white'
+          e.currentTarget.style.color = '#00A3E1'
+        }}
       >
-        View Audit Log
+        Audit Log
       </button>
-      {order.status_code !== '06' && (
+      {order.status_code === '06' && (
+        <button
+          onClick={() => setShowRestore(true)}
+          className="py-1.5 text-xs font-medium transition-colors"
+          style={{
+            border: '1px solid #10b981',
+            borderRadius: '20px',
+            backgroundColor: 'white',
+            color: '#10b981',
+            paddingLeft: '16px',
+            paddingRight: '16px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#10b981'
+            e.currentTarget.style.color = 'white'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'white'
+            e.currentTarget.style.color = '#10b981'
+          }}
+        >
+          Restore Order
+        </button>
+      )}
+      {canCancel && (
         <button
           onClick={() => setShowCancel(true)}
-          className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700"
+          className="py-1.5 text-xs font-medium transition-colors"
+          style={{
+            border: '1px solid #00A3E1',
+            borderRadius: '20px',
+            backgroundColor: 'white',
+            color: '#00A3E1',
+            paddingLeft: '16px',
+            paddingRight: '16px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#00A3E1'
+            e.currentTarget.style.color = 'white'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'white'
+            e.currentTarget.style.color = '#00A3E1'
+          }}
         >
           Cancel Order
         </button>
@@ -84,6 +177,15 @@ export function OrderActions({
             order={order}
             userId={userId}
             onClose={() => setShowCancel(false)}
+          />
+        </Suspense>
+      )}
+      {showRestore && (
+        <Suspense fallback={<div>Loading...</div>}>
+          <RestoreOrderModal
+            order={order}
+            userId={userId}
+            onClose={() => setShowRestore(false)}
           />
         </Suspense>
       )}

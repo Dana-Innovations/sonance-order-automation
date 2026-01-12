@@ -34,13 +34,13 @@ export function OrderFilters({
   const [isSearching, setIsSearching] = useState(false) // Track if user is actively typing to search
   const dropdownRef = useRef<HTMLDivElement>(null)
   
-  // CSR filter state
+  // ISR filter state
   const [isCsrDropdownOpen, setIsCsrDropdownOpen] = useState(false)
-  const [csrInputValue, setCsrInputValue] = useState('All CSRs')
+  const [csrInputValue, setCsrInputValue] = useState('All ISRs')
   const csrDropdownRef = useRef<HTMLDivElement>(null)
-  
+
   const ALL_CUSTOMERS_VALUE = 'All Customers'
-  const ALL_CSRS_VALUE = 'All CSRs'
+  const ALL_CSRS_VALUE = 'All ISRs'
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -61,7 +61,7 @@ export function OrderFilters({
     setCustomerInputValue(customerSearch || ALL_CUSTOMERS_VALUE)
   }, [customerSearch])
 
-  // Sync CSR input value with external csrFilter prop - look up CSR name
+  // Sync ISR input value with external csrFilter prop - look up ISR name
   useEffect(() => {
     if (!csrFilter) {
       setCsrInputValue(ALL_CSRS_VALUE)
@@ -93,7 +93,7 @@ export function OrderFilters({
     },
   })
 
-  // Fetch CSRs for filter dropdown
+  // Fetch ISRs for filter dropdown
   const { data: csrs } = useQuery({
     queryKey: ['csrs_list'],
     queryFn: async () => {
@@ -151,10 +151,10 @@ export function OrderFilters({
     setIsCustomerDropdownOpen(!isCustomerDropdownOpen)
   }
 
-  // CSR filter handlers
+  // ISR filter handlers
   const handleCsrSelect = (csr: { email: string; first_name: string; last_name: string } | null) => {
     if (csr === null) {
-      // "All CSRs" selected
+      // "All ISRs" selected
       setCsrInputValue(ALL_CSRS_VALUE)
       onCsrFilterChange('')
     } else {
@@ -191,7 +191,7 @@ export function OrderFilters({
     statusFilter.length + (csrFilter ? 1 : 0) + (customerSearch ? 1 : 0) + (dateFrom || dateTo ? 1 : 0)
 
   return (
-    <div className="rounded-sm border border-[#D9D9D6] bg-white p-6 shadow-sm" style={{ paddingLeft: '30px', paddingBottom: '27px' }}>
+    <div className="rounded-md shadow-sm border border-gray-200 bg-white p-6" style={{ paddingLeft: '30px', paddingBottom: '27px' }}>
       {/* Header */}
       <div className="flex items-center justify-between" style={{ marginBottom: '3px' }}>
         <div className="flex items-center gap-2">
@@ -288,19 +288,19 @@ export function OrderFilters({
           </div>
         </div>
 
-        {/* Right Side - CSR, Customer Search and Date Filters */}
+        {/* Right Side - ISR, Customer Search and Date Filters */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', paddingLeft: '24px' }}>
-          {/* Assigned CSR Filter */}
+          {/* Assigned ISR Filter */}
           <div ref={csrDropdownRef} className="relative" style={{ width: '30%' }}>
             <label className="block text-xs uppercase tracking-widest text-[#333F48] mb-3" style={{ fontWeight: 700 }}>
-              Assigned CSR
+              Assigned ISR
             </label>
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 value={csrInputValue}
                 readOnly
-                placeholder="Select CSR..."
+                placeholder="Select ISR..."
                 className="flex-1 border border-[#D9D9D6] bg-white px-3 text-[#333F48] placeholder:text-[#8f999f] focus:border-[#00A3E1] focus:outline-none focus:ring-2 focus:ring-[#00A3E1]/20 transition-colors cursor-pointer"
                 style={{ height: '38px', borderRadius: '6px', fontFamily: 'Montserrat, sans-serif', fontSize: '14px' }}
                 onClick={handleCsrDropdownToggle}
@@ -317,17 +317,17 @@ export function OrderFilters({
               </button>
             </div>
             
-            {/* CSR Dropdown */}
+            {/* ISR Dropdown */}
             {isCsrDropdownOpen && (
               <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto border border-[#D9D9D6] bg-white shadow-lg" style={{ borderRadius: '6px', fontFamily: 'Montserrat, sans-serif' }}>
-                {/* All CSRs option */}
+                {/* All ISRs option */}
                 <button
                   type="button"
                   onClick={() => handleCsrSelect(null)}
                   className="w-full px-3 py-2 text-left hover:bg-[#F5F5F5] transition-colors border-b border-[#D9D9D6]"
                 >
                   <span className="text-[#00A3E1] font-medium" style={{ fontSize: '14px' }}>
-                    All CSRs
+                    All ISRs
                   </span>
                 </button>
                 {csrs?.map((csr) => (

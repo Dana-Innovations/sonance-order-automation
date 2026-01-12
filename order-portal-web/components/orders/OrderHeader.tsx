@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Tables } from '@/lib/types/database'
 import { useRouter } from 'next/navigation'
+import { MapPin, Truck, FileText } from 'lucide-react'
 
 // US States list
 const US_STATES = [
@@ -103,6 +104,7 @@ export function OrderHeader({
   const [distinctCarriers, setDistinctCarriers] = useState<{ carrier_id: string; carrier_descr: string }[]>([])
   const [shipViaOptions, setShipViaOptions] = useState<{ ship_via_code: string; ship_via_desc: string }[]>([])
   const [notesExpanded, setNotesExpanded] = useState(false)
+  const [headerExpanded, setHeaderExpanded] = useState(true)
 
   const supabase = createClient()
   const router = useRouter()
@@ -191,7 +193,6 @@ export function OrderHeader({
       cust_shipto_city: address.city.trim() || null,
       cust_shipto_state: address.state.trim() || null,
       cust_shipto_postal_code: address.postal.trim() || null,
-      cust_shipto_country: address.country.trim() || null,
       cust_carrier: carrier.trim() || null,
       cust_ship_via: shipVia.trim() || null,
     }
@@ -220,7 +221,6 @@ export function OrderHeader({
         city: order.cust_shipto_city,
         state: order.cust_shipto_state,
         postal: order.cust_shipto_postal_code,
-        country: order.cust_shipto_country,
         carrier: order.cust_carrier,
         ship_via: order.cust_ship_via,
       }),
@@ -232,7 +232,6 @@ export function OrderHeader({
         city: updatedData.cust_shipto_city,
         state: updatedData.cust_shipto_state,
         postal: updatedData.cust_shipto_postal_code,
-        country: updatedData.cust_shipto_country,
         carrier: updatedData.cust_carrier,
         ship_via: updatedData.cust_ship_via,
       }),
@@ -243,34 +242,61 @@ export function OrderHeader({
   }
 
   const isCancelled = order.status_code === '06'
+  const isImportSuccessful = order.status_code === '05'
+  const isUploadInProcess = order.status_code === '04'
+  const canEdit = !isCancelled && !isImportSuccessful && !isUploadInProcess
 
   return (
-    <div className="rounded-sm border border-[#D9D9D6] bg-white p-5 space-y-4">
+    <div className="rounded-md shadow-sm border border-gray-200 bg-white p-5 space-y-4">
       {/* Header Info - Table layout for proper alignment */}
-      <div className="text-sm" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div className="text-[13px]" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         {/* Left side: Order details as table */}
         <table style={{ borderCollapse: 'collapse', marginBottom: '6px' }}>
           <tbody>
             <tr>
-              <td style={{ fontWeight: 700, color: '#333F48', textAlign: 'right', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>Customer:</td>
+              <td style={{ fontWeight: 700, color: '#333F48', textAlign: 'right', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>Cust.</td>
               <td style={{ color: '#333F48', paddingRight: '24px', paddingBottom: '6px' }}>{order.customers?.customer_name || order.customername || 'N/A'}</td>
-              <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>Cust. Order #:</td>
+              <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>Cust Ord #</td>
               <td style={{ color: '#333F48', paddingRight: '24px', paddingBottom: '6px' }}>{order.cust_order_number}</td>
-              <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>Cust Ord Date:</td>
+              <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>Order Date</td>
               <td style={{ color: '#333F48', paddingRight: '24px', paddingBottom: '6px' }}>{order.cust_order_date ? format(parseISO(order.cust_order_date), 'MMM d, yyyy') : 'N/A'}</td>
-              {order.ps_order_number && (
-                <>
-                  <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>PS Order #:</td>
-                  <td style={{ color: '#333F48', paddingBottom: '6px' }}>{order.ps_order_number}</td>
-                </>
-              )}
+              <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>PS Order #</td>
+              <td style={{
+                color: isImportSuccessful ? '#15803d' : '#333F48',
+                fontWeight: isImportSuccessful ? 700 : 400,
+                paddingBottom: '6px'
+              }}>
+                {isImportSuccessful && order.ps_order_number ? (
+                  <a
+                    href={`https://sonanceerp.corp.sonance.com/psp/FS92SYS/EMPLOYEE/ERP/c/MAINTAIN_SALES_ORDERS.ORDENT_SEARCH.GBL?Page=ORDENT_SEARCH&Action=U&BUSINESS_UNIT=DANA1&ORDER_NO=${order.ps_order_number}&ICAction=ORDENT_SEARCH_BTN`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      color: '#15803d',
+                      fontWeight: 700,
+                      textDecoration: 'underline',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = '#166534'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = '#15803d'
+                    }}
+                  >
+                    {order.ps_order_number}
+                  </a>
+                ) : (
+                  order.ps_order_number || '—'
+                )}
+              </td>
             </tr>
             <tr>
-              <td style={{ fontWeight: 700, color: '#333F48', textAlign: 'right', paddingRight: '6px', whiteSpace: 'nowrap' }}>From Email:</td>
+              <td style={{ fontWeight: 700, color: '#333F48', textAlign: 'right', paddingRight: '6px', whiteSpace: 'nowrap' }}>Email</td>
               <td style={{ color: '#333F48', paddingRight: '24px' }}>{order.email_sender || '—'}</td>
-              <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', whiteSpace: 'nowrap' }}>PS Account ID:</td>
+              <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', whiteSpace: 'nowrap' }}>PS Acct ID</td>
               <td style={{ color: '#333F48', paddingRight: '24px' }}>{order.ps_customer_id || '—'}</td>
-              <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', whiteSpace: 'nowrap' }}>Email Date:</td>
+              <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', whiteSpace: 'nowrap' }}>Email Date</td>
               <td style={{ color: '#333F48' }}>{order.email_received_at ? format(parseISO(order.email_received_at), 'MMM d, yyyy') : '—'}</td>
             </tr>
           </tbody>
@@ -280,7 +306,7 @@ export function OrderHeader({
         <table style={{ borderCollapse: 'collapse' }}>
           <tbody>
             <tr>
-              <td style={{ fontWeight: 700, color: '#333F48', textAlign: 'right', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>Order Status:</td>
+              <td style={{ fontWeight: 700, color: '#333F48', textAlign: 'right', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>Status</td>
               <td style={{ paddingBottom: '6px' }}>
                 <StatusBadge
                   statusCode={order.status_code}
@@ -289,7 +315,7 @@ export function OrderHeader({
               </td>
             </tr>
             <tr>
-              <td style={{ fontWeight: 700, color: '#333F48', textAlign: 'right', paddingRight: '6px', whiteSpace: 'nowrap' }}>Currency $:</td>
+              <td style={{ fontWeight: 700, color: '#333F48', textAlign: 'right', paddingRight: '6px', whiteSpace: 'nowrap' }}>Curr $</td>
               <td style={{ color: '#333F48' }}>{order.currency_code || '—'}</td>
             </tr>
           </tbody>
@@ -312,14 +338,72 @@ export function OrderHeader({
         </div>
       )}
 
+      {isImportSuccessful && (
+        <div className="rounded-sm bg-green-50 border border-green-200 p-4">
+          <p className="text-sm" style={{ color: '#15803d' }}>
+            Order Successfully Imported to PeopleSoft - No edits allowed. Navigate to order{' '}
+            {order.ps_order_number ? (
+              <a
+                href={`https://sonanceerp.corp.sonance.com/psp/FS92SYS/EMPLOYEE/ERP/c/MAINTAIN_SALES_ORDERS.ORDENT_SEARCH.GBL?Page=ORDENT_SEARCH&Action=U&BUSINESS_UNIT=DANA1&ORDER_NO=${order.ps_order_number}&ICAction=ORDENT_SEARCH_BTN`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: '#15803d',
+                  textDecoration: 'underline',
+                  cursor: 'pointer'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#166534'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#15803d'
+                }}
+              >
+                here
+              </a>
+            ) : (
+              'here'
+            )}
+          </p>
+        </div>
+      )}
+
+      {isUploadInProcess && (
+        <div className="rounded-sm bg-orange-50 border border-orange-200 p-4">
+          <p className="text-sm" style={{ fontWeight: 700, color: '#ea580c' }}>
+            Order Upload to PeopleSoft in Process - No edits allowed
+          </p>
+        </div>
+      )}
+
       {/* Ship-to Address and Carrier & Ship Method */}
       <div className="pt-4 border-t border-[#D9D9D6]">
+        <button
+          onClick={() => setHeaderExpanded(!headerExpanded)}
+          className="flex items-center cursor-pointer hover:opacity-80 transition-opacity mb-2"
+          style={{ background: 'none', border: 'none', padding: 0 }}
+        >
+          <MapPin className="h-4 w-4 text-[#00A3E1]" style={{ marginRight: '10px' }} />
+          <h3 className="font-bold uppercase tracking-widest text-[#333F48]" style={{ fontSize: '12px' }}>
+            Ship-to Address & Carrier
+          </h3>
+          <span
+            style={{
+              fontSize: '16px',
+              color: '#00A3E1',
+              transition: 'transform 0.2s',
+              transform: headerExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+              display: 'inline-block',
+              marginLeft: '12px'
+            }}
+          >
+            ▶
+          </span>
+        </button>
+        {headerExpanded && (
         <div className="flex flex-wrap gap-6" style={{ position: 'relative', paddingBottom: '40px' }}>
           {/* Ship-to Address Section */}
           <div className="flex-shrink-0">
-            <h3 className="font-semibold uppercase tracking-widest text-[#333F48] mb-1" style={{ fontSize: '12px' }}>
-              Ship-to Address
-            </h3>
             <div className="text-[#333F48]" style={{ fontSize: '12px' }}>
               <table style={{ borderCollapse: 'collapse' }}>
                 {isEditing && (
@@ -333,7 +417,7 @@ export function OrderHeader({
                 )}
                 <tbody>
                   <tr>
-                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Ship To Name:</td>
+                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Ship To Name</td>
                     <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.shipto_name || '—'}</td>
                     {isEditing && (
                       <td>
@@ -342,140 +426,143 @@ export function OrderHeader({
                           value={shipToName}
                           onChange={(e) => setShipToName(e.target.value)}
                           placeholder="Ship To Name"
-                          className="w-full rounded-sm border border-[#D9D9D6] bg-white px-2 py-1 text-xs text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
+                          className="w-full rounded-xl border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
                           style={{ minWidth: '180px' }}
                         />
                       </td>
                     )}
                   </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Addr Line 1:</td>
-                    <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_address_line1 || '—'}</td>
-                    {isEditing && (
-                      <td>
-                        <input
-                          type="text"
-                          value={address.line1}
-                          onChange={(e) => setAddress({ ...address, line1: e.target.value })}
-                          placeholder="Address Line 1"
-                          className="w-full rounded-sm border border-[#D9D9D6] bg-white px-2 py-1 text-xs text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
-                          style={{ minWidth: '180px' }}
-                        />
-                      </td>
-                    )}
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Addr Line 2:</td>
-                    <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_address_line2 || '—'}</td>
-                    {isEditing && (
-                      <td>
-                        <input
-                          type="text"
-                          value={address.line2}
-                          onChange={(e) => setAddress({ ...address, line2: e.target.value })}
-                          placeholder="Address Line 2"
-                          className="w-full rounded-sm border border-[#D9D9D6] bg-white px-2 py-1 text-xs text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
-                          style={{ minWidth: '180px' }}
-                        />
-                      </td>
-                    )}
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Addr Line 3:</td>
-                    <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_address_line3 || '—'}</td>
-                    {isEditing && (
-                      <td>
-                        <input
-                          type="text"
-                          value={address.line3}
-                          onChange={(e) => setAddress({ ...address, line3: e.target.value })}
-                          placeholder="Address Line 3"
-                          className="w-full rounded-sm border border-[#D9D9D6] bg-white px-2 py-1 text-xs text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
-                          style={{ minWidth: '180px' }}
-                        />
-                      </td>
-                    )}
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>City:</td>
-                    <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_city || '—'}</td>
-                    {isEditing && (
-                      <td>
-                        <input
-                          type="text"
-                          value={address.city}
-                          onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                          placeholder="City"
-                          className="w-full rounded-sm border border-[#D9D9D6] bg-white px-2 py-1 text-xs text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
-                          style={{ minWidth: '180px' }}
-                        />
-                      </td>
-                    )}
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>State:</td>
-                    <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_state || '—'}</td>
-                    {isEditing && (
-                      <td>
-                        {isUSA(address.country) || isUSA(order.cust_shipto_country) ? (
-                          <select
-                            value={address.state}
-                            onChange={(e) => setAddress({ ...address, state: e.target.value })}
-                            className="w-full rounded-sm border border-[#D9D9D6] bg-white px-2 py-1 text-xs text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
-                            style={{ minWidth: '180px' }}
-                          >
-                            <option value="">Select State</option>
-                            {US_STATES.map((state) => (
-                              <option key={state.code} value={state.code}>
-                                {state.code} - {state.name}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
+                  {(isEditing || order.cust_shipto_address_line1) && (
+                    <tr>
+                      <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Addr Line 1</td>
+                      <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_address_line1 || '—'}</td>
+                      {isEditing && (
+                        <td>
                           <input
                             type="text"
-                            value={address.state}
-                            onChange={(e) => setAddress({ ...address, state: e.target.value })}
-                            placeholder="State/Province"
-                            className="w-full rounded-sm border border-[#D9D9D6] bg-white px-2 py-1 text-xs text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
+                            value={address.line1}
+                            onChange={(e) => setAddress({ ...address, line1: e.target.value })}
+                            placeholder="Address Line 1"
+                            className="w-full rounded-xl border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
                             style={{ minWidth: '180px' }}
                           />
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Postal:</td>
-                    <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_postal_code || '—'}</td>
-                    {isEditing && (
-                      <td>
-                        <input
-                          type="text"
-                          value={address.postal}
-                          onChange={(e) => setAddress({ ...address, postal: e.target.value })}
-                          placeholder="Postal Code"
-                          className="w-full rounded-sm border border-[#D9D9D6] bg-white px-2 py-1 text-xs text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
-                          style={{ minWidth: '180px' }}
-                        />
-                      </td>
-                    )}
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Country:</td>
-                    <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_country || '—'}</td>
-                    {isEditing && (
-                      <td>
-                        <input
-                          type="text"
-                          value={address.country}
-                          onChange={(e) => setAddress({ ...address, country: e.target.value })}
-                          placeholder="Country"
-                          className="w-full rounded-sm border border-[#D9D9D6] bg-white px-2 py-1 text-xs text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
-                          style={{ minWidth: '180px' }}
-                        />
-                      </td>
-                    )}
-                  </tr>
+                        </td>
+                      )}
+                    </tr>
+                  )}
+                  {(isEditing || order.cust_shipto_address_line2) && (
+                    <tr>
+                      <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Addr Line 2</td>
+                      <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_address_line2 || '—'}</td>
+                      {isEditing && (
+                        <td>
+                          <input
+                            type="text"
+                            value={address.line2}
+                            onChange={(e) => setAddress({ ...address, line2: e.target.value })}
+                            placeholder="Address Line 2"
+                            className="w-full rounded-xl border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
+                            style={{ minWidth: '180px' }}
+                          />
+                        </td>
+                      )}
+                    </tr>
+                  )}
+                  {(isEditing || order.cust_shipto_address_line3) && (
+                    <tr>
+                      <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Addr Line 3</td>
+                      <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_address_line3 || '—'}</td>
+                      {isEditing && (
+                        <td>
+                          <input
+                            type="text"
+                            value={address.line3}
+                            onChange={(e) => setAddress({ ...address, line3: e.target.value })}
+                            placeholder="Address Line 3"
+                            className="w-full rounded-xl border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
+                            style={{ minWidth: '180px' }}
+                          />
+                        </td>
+                      )}
+                    </tr>
+                  )}
+                  {(isEditing || order.cust_shipto_city) && (
+                    <tr>
+                      <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>City</td>
+                      <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_city || '—'}</td>
+                      {isEditing && (
+                        <td>
+                          <input
+                            type="text"
+                            value={address.city}
+                            onChange={(e) => setAddress({ ...address, city: e.target.value })}
+                            placeholder="City"
+                            className="w-full rounded-xl border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
+                            style={{ minWidth: '180px' }}
+                          />
+                        </td>
+                      )}
+                    </tr>
+                  )}
+                  {(isEditing || order.cust_shipto_state) && (
+                    <tr>
+                      <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>State</td>
+                      <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_state || '—'}</td>
+                      {isEditing && (
+                        <td>
+                          {isUSA(address.country) || isUSA(order.cust_shipto_country) ? (
+                            <select
+                              value={address.state}
+                              onChange={(e) => setAddress({ ...address, state: e.target.value })}
+                              className="w-full rounded-xl border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
+                              style={{ minWidth: '180px' }}
+                            >
+                              <option value="">Select State</option>
+                              {US_STATES.map((state) => (
+                                <option key={state.code} value={state.code}>
+                                  {state.code} - {state.name}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              value={address.state}
+                              onChange={(e) => setAddress({ ...address, state: e.target.value })}
+                              placeholder="State/Province"
+                              className="w-full rounded-xl border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
+                              style={{ minWidth: '180px' }}
+                            />
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  )}
+                  {(isEditing || order.cust_shipto_postal_code) && (
+                    <tr>
+                      <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Postal</td>
+                      <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_postal_code || '—'}</td>
+                      {isEditing && (
+                        <td>
+                          <input
+                            type="text"
+                            value={address.postal}
+                            onChange={(e) => setAddress({ ...address, postal: e.target.value })}
+                            placeholder="Postal Code"
+                            className="w-full rounded-xl border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
+                            style={{ minWidth: '180px' }}
+                          />
+                        </td>
+                      )}
+                    </tr>
+                  )}
+                  {(isEditing || order.cust_shipto_country) && (
+                    <tr>
+                      <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Country</td>
+                      <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_country || '—'}</td>
+                      {isEditing && <td></td>}
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -483,9 +570,6 @@ export function OrderHeader({
 
           {/* Carrier & Ship Method Section - to the right of New Value */}
           <div className="flex-shrink-0" style={{ marginLeft: isEditing ? '2rem' : '3rem' }}>
-            <h3 className="font-semibold uppercase tracking-widest text-[#333F48] mb-1" style={{ fontSize: '12px' }}>
-              Carrier & Ship Method
-            </h3>
             <div className="text-[#333F48]" style={{ fontSize: '12px' }}>
               <table style={{ borderCollapse: 'collapse' }}>
                 {isEditing && (
@@ -499,19 +583,19 @@ export function OrderHeader({
                 )}
                 <tbody>
                   <tr>
-                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Cust Ship Meth:</td>
+                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Cust Ship Meth</td>
                     <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.custshipmethod || '—'}</td>
                     {isEditing && <td></td>}
                   </tr>
                   <tr>
-                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Carrier:</td>
+                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Carrier</td>
                     <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_carrier || '—'}</td>
                     {isEditing && (
                       <td>
                         <select
                           value={carrier}
                           onChange={(e) => setCarrier(e.target.value)}
-                          className="w-full rounded-sm border border-[#D9D9D6] bg-white px-2 py-1 text-xs text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
+                          className="w-full rounded-xl border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
                           style={{ minWidth: '150px' }}
                         >
                           <option value="">Select Carrier</option>
@@ -525,14 +609,14 @@ export function OrderHeader({
                     )}
                   </tr>
                   <tr>
-                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Ship Via:</td>
+                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Ship Via</td>
                     <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_ship_via || '—'}</td>
                     {isEditing && (
                       <td>
                         <select
                           value={shipVia}
                           onChange={(e) => setShipVia(e.target.value)}
-                          className="w-full rounded-sm border border-[#D9D9D6] bg-white px-2 py-1 text-xs text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
+                          className="w-full rounded-xl border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
                           style={{ minWidth: '150px' }}
                           disabled={!carrier}
                         >
@@ -552,10 +636,10 @@ export function OrderHeader({
           </div>
 
           {/* Edit/Save/Cancel Buttons - Lower Right */}
-          {!isCancelled && (
-            <div style={{ 
-              position: 'absolute', 
-              bottom: '5px', 
+          {canEdit && (
+            <div style={{
+              position: 'absolute',
+              bottom: '5px',
               right: '10px',
               display: 'flex',
               gap: '8px'
@@ -587,15 +671,25 @@ export function OrderHeader({
                 <>
                   <button
                     onClick={handleSave}
-                    className="px-4 py-1.5 text-xs font-medium transition-colors hover:bg-[#008ac4]"
-                    style={{ 
-                      border: '1px solid #00A3E1', 
-                      borderRadius: '4px', 
-                      backgroundColor: '#00A3E1',
-                      color: 'white'
+                    className="py-1.5 text-xs font-medium transition-colors"
+                    style={{
+                      border: '1px solid #00A3E1',
+                      borderRadius: '20px',
+                      backgroundColor: 'white',
+                      color: '#00A3E1',
+                      paddingLeft: '21px',
+                      paddingRight: '21px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#00A3E1'
+                      e.currentTarget.style.color = 'white'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white'
+                      e.currentTarget.style.color = '#00A3E1'
                     }}
                   >
-                    Save Changes
+                    Save
                   </button>
                   <button
                     onClick={() => {
@@ -613,21 +707,32 @@ export function OrderHeader({
                       setCarrier(order.cust_carrier || '')
                       setShipVia(order.cust_ship_via || '')
                     }}
-                    className="px-4 py-1.5 text-xs font-medium transition-colors hover:bg-[#F5F5F5]"
-                    style={{ 
-                      border: '1px solid #D9D9D6', 
-                      borderRadius: '4px', 
+                    className="py-1.5 text-xs font-medium transition-colors"
+                    style={{
+                      border: '1px solid #00A3E1',
+                      borderRadius: '20px',
                       backgroundColor: 'white',
-                      color: '#333F48'
+                      color: '#00A3E1',
+                      paddingLeft: '21px',
+                      paddingRight: '21px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#00A3E1'
+                      e.currentTarget.style.color = 'white'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white'
+                      e.currentTarget.style.color = '#00A3E1'
                     }}
                   >
-                    Cancel
+                    Exit
                   </button>
                 </>
               )}
             </div>
           )}
         </div>
+        )}
 
         {/* Order Header Notes Panel - Collapsible */}
         {order.cust_header_notes && (
@@ -637,8 +742,9 @@ export function OrderHeader({
               className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
               style={{ background: 'none', border: 'none', padding: 0 }}
             >
-              <h3 className="font-semibold uppercase tracking-widest text-[#333F48]" style={{ fontSize: '12px' }}>
-                Order Header Notes
+              <FileText className="h-4 w-4 text-[#00A3E1]" style={{ marginRight: '10px' }} />
+              <h3 className="font-bold uppercase tracking-widest text-[#333F48]" style={{ fontSize: '12px' }}>
+                ORDER HEADER NOTES
               </h3>
               <span 
                 style={{ 
@@ -654,8 +760,8 @@ export function OrderHeader({
               </span>
             </button>
             {notesExpanded && (
-              <div 
-                className="rounded-sm border border-[#D9D9D6] bg-[#F9F9F9] p-3 mt-2"
+              <div
+                className="rounded-md shadow-sm border border-gray-200 bg-[#F9F9F9] p-3 mt-2"
                 style={{ fontSize: '12px', color: '#333F48', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}
               >
                 {order.cust_header_notes}

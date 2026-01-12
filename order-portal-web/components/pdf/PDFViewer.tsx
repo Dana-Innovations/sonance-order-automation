@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, FileWarning, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, FileWarning, Loader2, FileText } from 'lucide-react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css'
 import 'react-pdf/dist/esm/Page/TextLayer.css'
@@ -88,10 +88,11 @@ export function PDFViewer({ pdfUrl }: { pdfUrl: string | null }) {
   // Loading state
   if (loading) {
     return (
-      <div className="rounded-sm border border-[#D9D9D6] bg-white">
+      <div className="rounded-md shadow-sm border border-gray-200 bg-white">
         <div className="flex items-center justify-between border-b border-[#D9D9D6] px-4 py-3">
-          <span className="text-xs font-medium uppercase tracking-widest text-[#333F48]">
-            Order PDF
+          <span className="flex items-center uppercase tracking-widest text-[#333F48]" style={{ fontSize: '12px', fontWeight: 700 }}>
+            <FileText className="h-4 w-4 text-[#00A3E1]" style={{ marginRight: '10px' }} />
+            ORDER PDF
           </span>
         </div>
         <div className="flex flex-col items-center justify-center h-96 gap-3">
@@ -105,10 +106,11 @@ export function PDFViewer({ pdfUrl }: { pdfUrl: string | null }) {
   // Error state
   if (error || !pdfData) {
     return (
-      <div className="rounded-sm border border-[#D9D9D6] bg-white">
+      <div className="rounded-md shadow-sm border border-gray-200 bg-white">
         <div className="flex items-center justify-between border-b border-[#D9D9D6] px-4 py-3">
-          <span className="text-xs font-medium uppercase tracking-widest text-[#333F48]">
-            Order PDF
+          <span className="flex items-center uppercase tracking-widest text-[#333F48]" style={{ fontSize: '12px', fontWeight: 700 }}>
+            <FileText className="h-4 w-4 text-[#00A3E1]" style={{ marginRight: '10px' }} />
+            ORDER PDF
           </span>
         </div>
         <div className="flex flex-col items-center justify-center h-96 gap-3">
@@ -134,11 +136,12 @@ export function PDFViewer({ pdfUrl }: { pdfUrl: string | null }) {
   }
 
   return (
-    <div className="rounded-sm border border-[#D9D9D6] bg-white">
+    <div className="rounded-md shadow-sm border border-gray-200 bg-white">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#D9D9D6] px-4 py-3">
-        <span className="text-xs font-medium uppercase tracking-widest text-[#333F48]">
-          Order PDF
+        <span className="flex items-center uppercase tracking-widest text-[#333F48]" style={{ fontSize: '12px', fontWeight: 700 }}>
+          <FileText className="h-4 w-4 text-[#00A3E1]" style={{ marginRight: '10px' }} />
+          ORDER PDF
         </span>
         <div className="flex items-center gap-4">
           {/* Pagination */}
