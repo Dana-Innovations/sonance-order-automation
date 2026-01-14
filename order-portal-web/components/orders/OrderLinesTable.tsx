@@ -319,7 +319,7 @@ export function OrderLinesTable({
                   {line.cust_product_sku || 'N/A'}
                 </td>
                 <td style={{ fontSize: '0.75rem', padding: '10px 6px', verticalAlign: 'top', width: '72px', textDecoration: strikethrough }} className="text-foreground">
-                  {line.validated_sku || line.sonance_prod_sku || <span style={{ color: 'red' }}>-</span>}
+                  {line.validated_sku || line.sonance_prod_sku || <span style={{ color: 'red' }}>---</span>}
                 </td>
                 <td style={{ fontSize: '0.75rem', padding: '10px 6px', verticalAlign: 'top', width: '200px', maxWidth: '200px', lineHeight: '1.4', textDecoration: strikethrough }} className="text-foreground">
                   <div style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
