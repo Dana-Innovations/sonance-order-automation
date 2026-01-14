@@ -97,19 +97,18 @@ export function OrderLinesTable({
     router.refresh()
   }
 
-  // On page load, lookup and populate sonance_unit_price for lines where it's null
+  // Create a cache key that includes all line SKUs so we refetch when they change
+  const lineSkusKey = order.order_lines
+    ?.map(l => `${l.id}:${l.sonance_prod_sku || l.cust_product_sku}`)
+    .join(',') || ''
+
+  // On page load or when lines change, lookup and populate sonance_unit_price
   useEffect(() => {
     const lookupAndUpdatePrices = async () => {
       const lines = order.order_lines || []
       const updatedPrices: Record<string, number | null> = {}
       
       for (const line of lines) {
-        // If sonance_unit_price already has a value, use it
-        if (line.sonance_unit_price != null) {
-          updatedPrices[line.id] = line.sonance_unit_price
-          continue
-        }
-        
         // Get the SKU and UOM to use for lookup (sonance values or fall back to cust values)
         const skuToLookup = line.sonance_prod_sku || line.cust_product_sku
         const uomToLookup = line.sonance_uom || line.cust_uom
@@ -119,25 +118,42 @@ export function OrderLinesTable({
           continue
         }
         
-        // Lookup price from customer_product_pricing
-        const { data: pricing } = await supabase
+        // Always lookup price from customer_product_pricing to get the current value
+        // First try exact match with UOM
+        let { data: pricing } = await supabase
           .from('customer_product_pricing')
           .select('dfi_price')
           .eq('ps_customer_id', order.ps_customer_id || '')
           .eq('product_id', skuToLookup)
-          .eq('uom', uomToLookup || '')
-          .single()
+          .eq('uom', uomToLookup || 'EA')
+          .maybeSingle()
+        
+        // If no exact match, try without UOM filter
+        if (!pricing) {
+          const { data: fallbackPricing } = await supabase
+            .from('customer_product_pricing')
+            .select('dfi_price')
+            .eq('ps_customer_id', order.ps_customer_id || '')
+            .eq('product_id', skuToLookup)
+            .limit(1)
+            .maybeSingle()
+          
+          pricing = fallbackPricing
+        }
         
         if (pricing?.dfi_price != null) {
-          // Update the order_lines table with the found price
-          await supabase
-            .from('order_lines')
-            .update({ sonance_unit_price: pricing.dfi_price })
-            .eq('id', line.id)
-          
           updatedPrices[line.id] = pricing.dfi_price
+          
+          // Only update the order_lines table if the current value is different
+          if (line.sonance_unit_price !== pricing.dfi_price) {
+            await supabase
+              .from('order_lines')
+              .update({ sonance_unit_price: pricing.dfi_price })
+              .eq('id', line.id)
+          }
         } else {
-          updatedPrices[line.id] = null
+          // If no pricing found, use the existing sonance_unit_price if available
+          updatedPrices[line.id] = line.sonance_unit_price ?? null
         }
       }
       
@@ -145,11 +161,11 @@ export function OrderLinesTable({
     }
     
     lookupAndUpdatePrices()
-  }, [order.id, order.order_lines, order.ps_customer_id, supabase])
+  }, [order.id, lineSkusKey, order.ps_customer_id, supabase])
 
   // Fetch Sonance description from customer_product_pricing for each line
-  const { data: sonanceDescriptions } = useQuery({
-    queryKey: ['sonance-descriptions', order.id, order.ps_customer_id, order.cust_currency_code],
+  const { data: sonanceDescriptions, refetch: refetchDescriptions } = useQuery({
+    queryKey: ['sonance-descriptions', order.id, order.ps_customer_id, order.currency_code, lineSkusKey],
     queryFn: async () => {
       const lines = order.order_lines || []
       const descriptions: Record<string, string> = {}
@@ -159,13 +175,14 @@ export function OrderLinesTable({
         if (!sonanceSku) continue
 
         // Lookup description from customer_product_pricing
-        const { data: pricing } = await supabase
+        // Try with currency_code first, then without
+        let { data: pricing } = await supabase
           .from('customer_product_pricing')
           .select('description')
           .eq('ps_customer_id', order.ps_customer_id || '')
-          .eq('currency_code', order.cust_currency_code || 'USD')
           .eq('product_id', sonanceSku)
-          .single()
+          .limit(1)
+          .maybeSingle()
 
         if (pricing?.description) {
           descriptions[line.id] = pricing.description
@@ -174,6 +191,7 @@ export function OrderLinesTable({
 
       return descriptions
     },
+    staleTime: 0, // Always refetch when query key changes
   })
 
   // Fetch pricing data for each line item
@@ -314,10 +332,10 @@ export function OrderLinesTable({
                   </div>
                 </td>
                 <td style={{ fontSize: '0.75rem', padding: '10px 6px', verticalAlign: 'top', textAlign: 'right', width: '28px', textDecoration: strikethrough }} className="text-foreground">
-                  {Math.round(line.cust_quantity || 0)}
+                  {Math.round(line.sonance_quantity ?? line.cust_quantity ?? 0)}
                 </td>
                 <td style={{ fontSize: '0.75rem', padding: '10px 4px', verticalAlign: 'top', width: '24px', textDecoration: strikethrough }} className="text-foreground">
-                  {line.cust_uom || 'N/A'}
+                  {line.sonance_uom || line.cust_uom || 'N/A'}
                 </td>
                 <td style={{ fontSize: '0.75rem', padding: '10px 4px', verticalAlign: 'top', textAlign: 'right', width: '70px', textDecoration: strikethrough }} className="text-foreground">
                   ${formatCurrency(line.cust_unit_price)}
@@ -344,6 +362,7 @@ export function OrderLinesTable({
                       line={line}
                       orderId={order.id}
                       userId={userId}
+                      psCustomerId={order.ps_customer_id || ''}
                       isCancelled={!canEdit}
                       isLineCancelled={isLineCancelled}
                       onRestore={() => handleRestoreLine(line)}

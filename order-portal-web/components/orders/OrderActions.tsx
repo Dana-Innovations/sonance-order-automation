@@ -5,8 +5,8 @@ import { ERPNumberInput } from './ERPNumberInput'
 import { Tables } from '@/lib/types/database'
 
 // Lazy load modals for better performance
-const ValidateOrderModal = lazy(() =>
-  import('./ValidateOrderModal').then((mod) => ({ default: mod.ValidateOrderModal }))
+const PostOrderModal = lazy(() =>
+  import('./PostOrderModal').then((mod) => ({ default: mod.PostOrderModal }))
 )
 const CancelOrderModal = lazy(() =>
   import('./CancelOrderModal').then((mod) => ({ default: mod.CancelOrderModal }))
@@ -16,9 +16,6 @@ const RestoreOrderModal = lazy(() =>
 )
 const AuditLogModal = lazy(() =>
   import('@/components/audit/AuditLogModal').then((mod) => ({ default: mod.AuditLogModal }))
-)
-const ExportModal = lazy(() =>
-  import('./ExportModal').then((mod) => ({ default: mod.ExportModal }))
 )
 
 type Order = Tables<'orders'>
@@ -30,22 +27,21 @@ export function OrderActions({
   order: Order
   userId: string
 }) {
-  const [showValidate, setShowValidate] = useState(false)
+  const [showPostOrder, setShowPostOrder] = useState(false)
   const [showCancel, setShowCancel] = useState(false)
   const [showRestore, setShowRestore] = useState(false)
   const [showAuditLog, setShowAuditLog] = useState(false)
-  const [showExport, setShowExport] = useState(false)
 
-  const canValidate = order.status_code === '02' // Under Review
-  const canExport = order.status_code === '03' // Validated
+  // Post Order available for Under Review (02) or Reviewed with Changes (03)
+  const canPostOrder = order.status_code === '02' || order.status_code === '03'
   const canEnterERP = false // ERP number entry removed
   const canCancel = order.status_code !== '06' && !order.ps_order_number && order.status_code !== '05' && order.status_code !== '04'
 
   return (
     <div className="flex flex-wrap justify-center" style={{ gap: '24px' }}>
-      {canValidate && (
+      {canPostOrder && (
         <button
-          onClick={() => setShowValidate(true)}
+          onClick={() => setShowPostOrder(true)}
           className="py-1.5 text-xs font-medium transition-colors"
           style={{
             border: '1px solid #00A3E1',
@@ -65,30 +61,6 @@ export function OrderActions({
           }}
         >
           Post Order
-        </button>
-      )}
-      {canExport && (
-        <button
-          onClick={() => setShowExport(true)}
-          className="py-1.5 text-xs font-medium transition-colors"
-          style={{
-            border: '1px solid #00A3E1',
-            borderRadius: '20px',
-            backgroundColor: 'white',
-            color: '#00A3E1',
-            paddingLeft: '16px',
-            paddingRight: '16px'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#00A3E1'
-            e.currentTarget.style.color = 'white'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white'
-            e.currentTarget.style.color = '#00A3E1'
-          }}
-        >
-          Export to XML
         </button>
       )}
       {canEnterERP && <ERPNumberInput order={order} userId={userId} />}
@@ -162,12 +134,12 @@ export function OrderActions({
           Cancel Order
         </button>
       )}
-      {showValidate && (
+      {showPostOrder && (
         <Suspense fallback={<div>Loading...</div>}>
-          <ValidateOrderModal
+          <PostOrderModal
             order={order}
             userId={userId}
-            onClose={() => setShowValidate(false)}
+            onClose={() => setShowPostOrder(false)}
           />
         </Suspense>
       )}
@@ -194,15 +166,6 @@ export function OrderActions({
           <AuditLogModal
             orderId={order.id}
             onClose={() => setShowAuditLog(false)}
-          />
-        </Suspense>
-      )}
-      {showExport && (
-        <Suspense fallback={<div>Loading...</div>}>
-          <ExportModal
-            order={order}
-            userId={userId}
-            onClose={() => setShowExport(false)}
           />
         </Suspense>
       )}

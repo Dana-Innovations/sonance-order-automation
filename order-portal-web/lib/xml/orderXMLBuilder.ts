@@ -41,14 +41,16 @@ export function generateOrderXML(order: Order): string {
   </OrderHeader>
   <OrderLines>
     ${order.order_lines
+      ?.filter((line) => line.line_status !== 'cancelled')
       ?.map(
         (line) => `    <OrderLine>
       <LineNumber>${line.cust_line_number}</LineNumber>
-      <ProductSKU>${escapeXML(line.cust_product_sku || '')}</ProductSKU>
+      <ProductSKU>${escapeXML(line.sonance_prod_sku || line.cust_product_sku || '')}</ProductSKU>
+      <CustomerProductSKU>${escapeXML(line.cust_product_sku || '')}</CustomerProductSKU>
       <Description>${escapeXML(line.cust_line_desc || '')}</Description>
-      <Quantity>${line.cust_quantity?.toFixed(4) || '0.0000'}</Quantity>
-      <UOM>${escapeXML(line.cust_uom || '')}</UOM>
-      <UnitPrice>${line.cust_unit_price?.toFixed(2) || '0.00'}</UnitPrice>
+      <Quantity>${(line.sonance_quantity || line.cust_quantity)?.toFixed(4) || '0.0000'}</Quantity>
+      <UOM>${escapeXML(line.sonance_uom || line.cust_uom || '')}</UOM>
+      <UnitPrice>${(line.sonance_unit_price || line.cust_unit_price)?.toFixed(2) || '0.00'}</UnitPrice>
       <LineTotal>${line.cust_line_total?.toFixed(2) || '0.00'}</LineTotal>
       <CurrencyCode>${escapeXML(line.cust_currency_code || order.currency_code || 'USD')}</CurrencyCode>
     </OrderLine>`
@@ -73,8 +75,9 @@ function escapeXML(str: string | null | undefined): string {
 export function validateOrderForExport(order: Order): { valid: boolean; errors: string[] } {
   const errors: string[] = []
 
-  if (order.status_code !== '03') {
-    errors.push('Order must be in Validated status to export')
+  // Allow export from status 02 (Under Review) or 03 (Validated)
+  if (order.status_code !== '02' && order.status_code !== '03') {
+    errors.push('Order must be in Under Review or Validated status to export')
   }
 
   if (!order.cust_order_number) {
@@ -93,19 +96,25 @@ export function validateOrderForExport(order: Order): { valid: boolean; errors: 
     errors.push('Carrier is required')
   }
 
-  if (!order.order_lines || order.order_lines.length === 0) {
-    errors.push('At least one order line is required')
+  // Filter to active lines only
+  const activeLines = order.order_lines?.filter(line => line.line_status !== 'cancelled') || []
+
+  if (activeLines.length === 0) {
+    errors.push('At least one active order line is required')
   }
 
-  // Validate order lines
-  order.order_lines?.forEach((line, index) => {
-    if (!line.cust_product_sku) {
+  // Validate order lines - use Sonance SKU if available, otherwise customer SKU
+  activeLines.forEach((line) => {
+    const productSku = line.sonance_prod_sku || line.cust_product_sku
+    if (!productSku) {
       errors.push(`Line ${line.cust_line_number}: Product SKU is required`)
     }
-    if (!line.cust_quantity || line.cust_quantity <= 0) {
+    const quantity = line.sonance_quantity || line.cust_quantity
+    if (!quantity || quantity <= 0) {
       errors.push(`Line ${line.cust_line_number}: Valid quantity is required`)
     }
-    if (line.cust_unit_price === null || line.cust_unit_price === undefined || line.cust_unit_price < 0) {
+    const unitPrice = line.sonance_unit_price ?? line.cust_unit_price
+    if (unitPrice === null || unitPrice === undefined || unitPrice < 0) {
       errors.push(`Line ${line.cust_line_number}: Valid unit price is required`)
     }
   })

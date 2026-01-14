@@ -264,6 +264,60 @@ export type Database = {
           },
         ]
       }
+      customer_product_mappings: {
+        Row: {
+          id: string
+          ps_customer_id: string
+          cust_product_sku: string | null
+          cust_product_desc: string | null
+          sonance_product_sku: string
+          confidence_score: number | null
+          times_used: number | null
+          last_used_at: string | null
+          created_at: string | null
+          created_by_order_id: string | null
+        }
+        Insert: {
+          id?: string
+          ps_customer_id: string
+          cust_product_sku?: string | null
+          cust_product_desc?: string | null
+          sonance_product_sku: string
+          confidence_score?: number | null
+          times_used?: number | null
+          last_used_at?: string | null
+          created_at?: string | null
+          created_by_order_id?: string | null
+        }
+        Update: {
+          id?: string
+          ps_customer_id?: string
+          cust_product_sku?: string | null
+          cust_product_desc?: string | null
+          sonance_product_sku?: string
+          confidence_score?: number | null
+          times_used?: number | null
+          last_used_at?: string | null
+          created_at?: string | null
+          created_by_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_product_mappings_ps_customer_id_fkey"
+            columns: ["ps_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["ps_customer_id"]
+          },
+          {
+            foreignKeyName: "customer_product_mappings_created_by_order_id_fkey"
+            columns: ["created_by_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_lines: {
         Row: {
           created_at: string | null
