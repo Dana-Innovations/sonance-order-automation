@@ -328,7 +328,7 @@ export function OrderLinesTable({
                 </td>
                 <td style={{ fontSize: '0.75rem', padding: '10px 6px', verticalAlign: 'top', width: '160px', maxWidth: '160px', lineHeight: '1.4', textDecoration: strikethrough }} className="text-foreground">
                   <div style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
-                    {sonanceDescriptions?.[line.id] || (!line.validated_sku && !line.sonance_prod_sku ? <span style={{ color: 'red', fontWeight: 'bold' }}>N/A</span> : 'N/A')}
+                    {sonanceDescriptions?.[line.id] || (!line.validated_sku && !line.sonance_prod_sku ? <span style={{ color: 'red' }}>N/A</span> : 'N/A')}
                   </div>
                 </td>
                 <td style={{ fontSize: '0.75rem', padding: '10px 6px', verticalAlign: 'top', textAlign: 'right', width: '28px', textDecoration: strikethrough }} className="text-foreground">
