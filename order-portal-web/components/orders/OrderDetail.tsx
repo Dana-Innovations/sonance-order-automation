@@ -1,6 +1,6 @@
 'use client'
 
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState, useEffect, useRef } from 'react'
 import { OrderHeader } from './OrderHeader'
 import { OrderLinesTable } from './OrderLinesTable'
 import { OrderActions } from './OrderActions'
@@ -28,6 +28,93 @@ export function OrderDetail({
 }) {
   const isCancelled = order.status_code === '06'
 
+  // State for resizable PDF panel
+  const [pdfPanelWidth, setPdfPanelWidth] = useState(640) // Default width
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStartX = useRef(0)
+  const dragStartWidth = useRef(640)
+
+  // Calculate PDF zoom scale proportionally to panel width
+  // Width range: 400-1000px, Scale range: 0.5-2.0
+  const pdfScale = 0.5 + ((pdfPanelWidth - 400) / (1000 - 400)) * (2.0 - 0.5)
+
+  // Handle scale changes from PDF zoom buttons
+  const handleScaleChange = (scaleDelta: number) => {
+    // Convert scale delta to width delta
+    // Scale range: 1.5 (2.0 - 0.5), Width range: 600 (1000 - 400)
+    const widthDelta = (scaleDelta / 1.5) * 600
+    const newWidth = Math.max(400, Math.min(1000, pdfPanelWidth + widthDelta))
+    setPdfPanelWidth(newWidth)
+    savePdfPanelWidth(newWidth)
+  }
+
+  // Load saved width from localStorage on mount
+  useEffect(() => {
+    const savedWidth = localStorage.getItem('orderDetailPdfPanelWidth')
+    if (savedWidth) {
+      const width = parseInt(savedWidth, 10)
+      if (width >= 400 && width <= 1000) {
+        setPdfPanelWidth(width)
+      }
+    }
+  }, [])
+
+  // Save width to localStorage when it changes (after drag)
+  const savePdfPanelWidth = (width: number) => {
+    localStorage.setItem('orderDetailPdfPanelWidth', width.toString())
+  }
+
+  // Mouse event handlers for dragging
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true)
+    dragStartX.current = e.clientX
+    dragStartWidth.current = pdfPanelWidth
+
+    // Prevent text selection during drag
+    e.preventDefault()
+  }
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging) return
+
+    // Calculate the change in X position (negative = dragging left, positive = dragging right)
+    const deltaX = e.clientX - dragStartX.current
+
+    // Calculate new width (dragging left reduces width, dragging right increases width)
+    const newWidth = dragStartWidth.current - deltaX
+
+    // Clamp between min (400px) and max (1000px)
+    const clampedWidth = Math.max(400, Math.min(1000, newWidth))
+
+    setPdfPanelWidth(clampedWidth)
+  }
+
+  const handleMouseUp = () => {
+    if (isDragging) {
+      setIsDragging(false)
+      savePdfPanelWidth(pdfPanelWidth)
+    }
+  }
+
+  // Add/remove global mouse event listeners for drag
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+
+      // Prevent text selection during drag
+      document.body.style.userSelect = 'none'
+      document.body.style.cursor = 'col-resize'
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+        document.body.style.userSelect = ''
+        document.body.style.cursor = ''
+      }
+    }
+  }, [isDragging, pdfPanelWidth])
+
   return (
     <>
       {/* Custom styles for side-by-side layout */}
@@ -36,14 +123,13 @@ export function OrderDetail({
           .order-detail-container {
             display: flex;
             flex-direction: row;
-            gap: 1.5rem;
+            gap: 0;
           }
           .order-detail-left {
             flex: 1;
             min-width: 0;
           }
           .order-detail-right {
-            width: 640px;
             flex-shrink: 0;
           }
           .order-detail-right-inner {
@@ -67,7 +153,7 @@ export function OrderDetail({
 
       <div className="order-detail-container" style={{ paddingTop: '5px' }}>
         {/* Left Panel: Order Content */}
-        <div className="order-detail-left space-y-6">
+        <div className="order-detail-left space-y-6" style={{ paddingRight: '12px' }}>
           <OrderHeader order={order} userId={userId} />
           <OrderLinesTable order={order} userId={userId} />
           
@@ -88,8 +174,47 @@ export function OrderDetail({
           <OrderNavigation currentOrderId={order.id} />
         </div>
 
+        {/* Draggable separator (desktop only) */}
+        <div
+          onMouseDown={handleMouseDown}
+          className="resize-separator"
+          style={{
+            width: '3px',
+            backgroundColor: '#9ca3af',
+            cursor: 'col-resize',
+            flexShrink: 0,
+            position: 'relative',
+            alignSelf: 'stretch',
+            minHeight: '100%',
+            display: 'block',
+            transition: isDragging ? 'none' : 'background-color 0.2s, width 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            if (!isDragging) {
+              e.currentTarget.style.backgroundColor = '#00A3E1'
+              e.currentTarget.style.width = '4px'
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isDragging) {
+              e.currentTarget.style.backgroundColor = '#9ca3af'
+              e.currentTarget.style.width = '3px'
+            }
+          }}
+        >
+          {/* Invisible wider hit area for easier grabbing */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: '-4px',
+            right: '-4px',
+            bottom: 0,
+            cursor: 'col-resize',
+          }} />
+        </div>
+
         {/* Right Panel: PDF Viewer */}
-        <div className="order-detail-right">
+        <div className="order-detail-right" style={{ width: `${pdfPanelWidth}px`, paddingLeft: '12px' }}>
           <div className="order-detail-right-inner">
             <Suspense
               fallback={
@@ -107,7 +232,11 @@ export function OrderDetail({
                 </div>
               }
             >
-              <PDFViewer pdfUrl={order.pdf_file_url} />
+              <PDFViewer
+                pdfUrl={order.pdf_file_url}
+                externalScale={pdfScale}
+                onScaleChange={handleScaleChange}
+              />
             </Suspense>
           </div>
         </div>

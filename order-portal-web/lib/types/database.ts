@@ -211,6 +211,66 @@ export type Database = {
           },
         ]
       }
+      customer_product_pricing: {
+        Row: {
+          id: string
+          ps_customer_id: string
+          customer_name: string | null
+          currency_code: string
+          product_id: string
+          description: string | null
+          brand: string | null
+          category: string | null
+          is_kit: boolean | null
+          uom: string | null
+          is_default_uom: boolean | null
+          pricing_uom: string | null
+          list_price: number | null
+          discount_pct: number | null
+          dfi_price: number | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          ps_customer_id: string
+          customer_name?: string | null
+          currency_code: string
+          product_id: string
+          description?: string | null
+          brand?: string | null
+          category?: string | null
+          is_kit?: boolean | null
+          uom?: string | null
+          is_default_uom?: boolean | null
+          pricing_uom?: string | null
+          list_price?: number | null
+          discount_pct?: number | null
+          dfi_price?: number | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          ps_customer_id?: string
+          customer_name?: string | null
+          currency_code?: string
+          product_id?: string
+          description?: string | null
+          brand?: string | null
+          category?: string | null
+          is_kit?: boolean | null
+          uom?: string | null
+          is_default_uom?: boolean | null
+          pricing_uom?: string | null
+          list_price?: number | null
+          discount_pct?: number | null
+          dfi_price?: number | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           created_at: string | null

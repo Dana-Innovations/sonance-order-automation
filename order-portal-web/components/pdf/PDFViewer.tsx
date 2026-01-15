@@ -10,13 +10,28 @@ import 'react-pdf/dist/esm/Page/TextLayer.css'
 // Note: Using .mjs extension for modern ES modules
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
-export function PDFViewer({ pdfUrl }: { pdfUrl: string | null }) {
+export function PDFViewer({
+  pdfUrl,
+  externalScale,
+  onScaleChange
+}: {
+  pdfUrl: string | null;
+  externalScale?: number;
+  onScaleChange?: (delta: number) => void;
+}) {
   const [numPages, setNumPages] = useState<number | null>(null)
   const [pageNumber, setPageNumber] = useState(1)
-  const [scale, setScale] = useState(1.0)
+  const [scale, setScale] = useState(externalScale || 1.0)
   const [pdfData, setPdfData] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Sync external scale changes
+  useEffect(() => {
+    if (externalScale !== undefined) {
+      setScale(externalScale)
+    }
+  }, [externalScale])
 
   useEffect(() => {
     let isMounted = true
@@ -170,7 +185,13 @@ export function PDFViewer({ pdfUrl }: { pdfUrl: string | null }) {
           {/* Zoom */}
           <div className="flex items-center gap-2 border-l border-[#D9D9D6] pl-4">
             <button
-              onClick={() => setScale((s) => Math.max(0.5, s - 0.25))}
+              onClick={() => {
+                if (onScaleChange) {
+                  onScaleChange(-0.1) // Smaller increment for smoother control
+                } else {
+                  setScale((s) => Math.max(0.5, s - 0.25))
+                }
+              }}
               disabled={scale <= 0.5}
               className="h-7 w-7 rounded-sm border border-[#D9D9D6] bg-white flex items-center justify-center text-[#333F48] hover:bg-[#F5F5F5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               title="Zoom out"
@@ -181,7 +202,13 @@ export function PDFViewer({ pdfUrl }: { pdfUrl: string | null }) {
               {Math.round(scale * 100)}%
             </span>
             <button
-              onClick={() => setScale((s) => Math.min(2, s + 0.25))}
+              onClick={() => {
+                if (onScaleChange) {
+                  onScaleChange(0.1) // Smaller increment for smoother control
+                } else {
+                  setScale((s) => Math.min(2, s + 0.25))
+                }
+              }}
               disabled={scale >= 2}
               className="h-7 w-7 rounded-sm border border-[#D9D9D6] bg-white flex items-center justify-center text-[#333F48] hover:bg-[#F5F5F5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               title="Zoom in"

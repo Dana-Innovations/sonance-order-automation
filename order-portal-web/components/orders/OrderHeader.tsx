@@ -417,8 +417,17 @@ export function OrderHeader({
                 )}
                 <tbody>
                   <tr>
-                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Ship To Name</td>
-                    <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.shipto_name || '—'}</td>
+                    <td style={{
+                      fontWeight: 600,
+                      textAlign: 'right',
+                      paddingRight: '0.5rem',
+                      whiteSpace: 'nowrap',
+                      color: !order.shipto_name ? 'red' : '#333F48'
+                    }}>Ship To Name</td>
+                    <td style={{
+                      paddingRight: isEditing ? '1.5rem' : 0,
+                      color: !order.shipto_name ? 'red' : '#333F48'
+                    }}>{order.shipto_name || '—'}</td>
                     {isEditing && (
                       <td>
                         <input
@@ -588,8 +597,17 @@ export function OrderHeader({
                     {isEditing && <td></td>}
                   </tr>
                   <tr>
-                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Carrier</td>
-                    <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_carrier || '—'}</td>
+                    <td style={{
+                      fontWeight: 600,
+                      textAlign: 'right',
+                      paddingRight: '0.5rem',
+                      whiteSpace: 'nowrap',
+                      color: !order.cust_carrier ? 'red' : '#333F48'
+                    }}>Carrier</td>
+                    <td style={{
+                      paddingRight: isEditing ? '1.5rem' : 0,
+                      color: !order.cust_carrier ? 'red' : '#333F48'
+                    }}>{order.cust_carrier || '—'}</td>
                     {isEditing && (
                       <td>
                         <select
@@ -609,8 +627,17 @@ export function OrderHeader({
                     )}
                   </tr>
                   <tr>
-                    <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Ship Via</td>
-                    <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_ship_via || '—'}</td>
+                    <td style={{
+                      fontWeight: 600,
+                      textAlign: 'right',
+                      paddingRight: '0.5rem',
+                      whiteSpace: 'nowrap',
+                      color: !order.cust_ship_via ? 'red' : '#333F48'
+                    }}>Ship Via</td>
+                    <td style={{
+                      paddingRight: isEditing ? '1.5rem' : 0,
+                      color: !order.cust_ship_via ? 'red' : '#333F48'
+                    }}>{order.cust_ship_via || '—'}</td>
                     {isEditing && (
                       <td>
                         <select

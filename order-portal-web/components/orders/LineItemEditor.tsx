@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Tables } from '@/lib/types/database'
+import { ProductLookupModal } from './ProductLookupModal'
+import { Search } from 'lucide-react'
 
 type OrderLine = Tables<'order_lines'>
 
@@ -12,6 +14,7 @@ export function LineItemEditor({
   orderId,
   userId,
   psCustomerId,
+  currencyCode = 'USD',
   isCancelled = false,
   isLineCancelled = false,
   onRestore,
@@ -22,6 +25,7 @@ export function LineItemEditor({
   orderId: string
   userId: string
   psCustomerId: string
+  currencyCode?: string
   isCancelled?: boolean
   isLineCancelled?: boolean
   onRestore?: () => void
@@ -30,6 +34,8 @@ export function LineItemEditor({
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isLookupModalOpen, setIsLookupModalOpen] = useState(false)
+  const [validUoms, setValidUoms] = useState<string[]>(['EA', 'PR', 'BX'])
   const [formData, setFormData] = useState({
     quantity: line.cust_quantity?.toString() || '',
     unitPrice: line.sonance_unit_price?.toString() || '',
@@ -40,6 +46,54 @@ export function LineItemEditor({
   })
   const supabase = createClient()
   const router = useRouter()
+
+  // Fetch valid UOMs when sonanceItem changes
+  useEffect(() => {
+    if (!formData.sonanceItem || !isEditing || !psCustomerId) {
+      setValidUoms(['EA', 'PR', 'BX'])
+      return
+    }
+
+    const fetchValidUoms = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('customer_product_pricing')
+          .select('uom')
+          .eq('ps_customer_id', psCustomerId)
+          .eq('product_id', formData.sonanceItem)
+          .eq('currency_code', currencyCode)
+
+        if (error) throw error
+
+        if (data && data.length > 0) {
+          const uoms = [...new Set(data.map(item => item.uom).filter(Boolean))] as string[]
+          setValidUoms(uoms.length > 0 ? uoms : ['EA', 'PR', 'BX'])
+        } else {
+          setValidUoms(['EA', 'PR', 'BX'])
+        }
+      } catch (err) {
+        console.error('Error fetching valid UOMs:', err)
+        setValidUoms(['EA', 'PR', 'BX'])
+      }
+    }
+
+    fetchValidUoms()
+  }, [formData.sonanceItem, psCustomerId, currencyCode, isEditing, supabase])
+
+  const handleProductSelect = (product: {
+    product_id: string
+    uom: string
+    dfi_price: number
+    description: string
+  }) => {
+    setFormData({
+      ...formData,
+      sonanceItem: product.product_id,
+      uom: product.uom,
+      unitPrice: product.dfi_price.toString(),
+      // Do NOT overwrite customer description - it should remain unchanged
+    })
+  }
 
   const handleSave = async () => {
     const quantity = parseFloat(formData.quantity)
@@ -104,8 +158,11 @@ export function LineItemEditor({
       cust_uom: formData.uom,
       sonance_prod_sku: formData.sonanceItem,
       sonance_unit_price: unitPrice,
+      validated_sku: formData.sonanceItem,
+      validation_source: 'manual_lookup',
+      is_validated: true,
     }
-    
+
     // If we looked up a UOM from pricing, also update sonance_uom
     if (lookedUpUom) {
       updateData.sonance_uom = lookedUpUom
@@ -195,9 +252,10 @@ export function LineItemEditor({
 
   if (isEditing) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+      <>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
         <div className="flex items-center" style={{ gap: '8px' }}>
-          <label className="font-medium text-muted-foreground whitespace-nowrap" style={{ fontSize: '11px', width: '45px', textAlign: 'right' }}>ITEM</label>
+          <label className="font-medium text-muted-foreground whitespace-nowrap" style={{ fontSize: '11px', width: '45px', textAlign: 'right' }}>PROD</label>
           <input
             type="text"
             value={formData.sonanceItem}
@@ -206,6 +264,35 @@ export function LineItemEditor({
             style={{ width: '80px', textAlign: 'left' }}
             className="rounded-xl border border-input bg-background px-2 py-1 text-sm"
           />
+          <button
+            onClick={() => setIsLookupModalOpen(true)}
+            type="button"
+            className="flex items-center justify-center hover:bg-blue-50 transition-colors"
+            style={{
+              width: '24px',
+              height: '24px',
+              border: '1px solid #00A3E1',
+              borderRadius: '50%',
+              backgroundColor: 'white',
+              color: '#00A3E1',
+              cursor: 'pointer',
+            }}
+            title="Search products"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="5" cy="5" r="4" />
+              <line x1="8" y1="8" x2="13" y2="13" />
+            </svg>
+          </button>
         </div>
         <div className="flex items-center" style={{ gap: '8px' }}>
           <label className="font-medium text-muted-foreground whitespace-nowrap" style={{ fontSize: '11px', width: '45px', textAlign: 'right' }}>QTY</label>
@@ -225,10 +312,9 @@ export function LineItemEditor({
           <input
             type="text"
             value={formData.uom}
-            onChange={(e) => setFormData({ ...formData, uom: e.target.value })}
-            placeholder="UOM"
-            style={{ width: '80px', textAlign: 'left' }}
-            className="rounded-xl border border-input bg-background px-2 py-1 text-sm"
+            readOnly
+            style={{ width: '80px', textAlign: 'left', backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+            className="rounded-xl border border-input px-2 py-1 text-sm"
           />
         </div>
         <div className="flex items-center" style={{ gap: '8px' }}>
@@ -299,7 +385,18 @@ export function LineItemEditor({
             Exit
           </button>
         </div>
-      </div>
+        </div>
+        {isLookupModalOpen && (
+          <ProductLookupModal
+            orderId={orderId}
+            psCustomerId={psCustomerId}
+            currencyCode={currencyCode}
+            lineNumber={line.cust_line_number}
+            onSelect={handleProductSelect}
+            onClose={() => setIsLookupModalOpen(false)}
+          />
+        )}
+      </>
     )
   }
 

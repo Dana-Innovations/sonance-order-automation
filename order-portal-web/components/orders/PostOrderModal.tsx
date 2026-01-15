@@ -36,9 +36,13 @@ function validateOrderForPost(order: Order): ValidationResult {
     errors.push('Complete ship-to address is required (Address Line 1, City, State)')
   }
 
-  // Carrier validation
+  // Carrier and Ship Via validation
   if (!order.cust_carrier) {
     errors.push('Carrier is required')
+  }
+
+  if (!order.cust_ship_via) {
+    errors.push('Ship Via is required')
   }
 
   // Order lines validation
@@ -263,6 +267,10 @@ export function PostOrderModal({
                   <ValidationItem
                     passed={!!order.cust_carrier}
                     label="Carrier selected"
+                  />
+                  <ValidationItem
+                    passed={!!order.cust_ship_via}
+                    label="Ship Via selected"
                   />
                   <ValidationItem
                     passed={(order.order_lines?.filter(l => l.line_status !== 'cancelled').length || 0) > 0}
