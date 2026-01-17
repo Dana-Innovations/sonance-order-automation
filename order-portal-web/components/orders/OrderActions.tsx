@@ -1,24 +1,19 @@
 'use client'
 
-import { useState, lazy, Suspense } from 'react'
+import { useState, useEffect } from 'react'
 import { ERPNumberInput } from './ERPNumberInput'
 import { Tables } from '@/lib/types/database'
+import { PostOrderModal } from './PostOrderModal'
+import { CancelOrderModal } from './CancelOrderModal'
+import { RestoreOrderModal } from './RestoreOrderModal'
+import { AuditLogModal } from '@/components/audit/AuditLogModal'
+import { AddLineModal } from './AddLineModal'
 
-// Lazy load modals for better performance
-const PostOrderModal = lazy(() =>
-  import('./PostOrderModal').then((mod) => ({ default: mod.PostOrderModal }))
-)
-const CancelOrderModal = lazy(() =>
-  import('./CancelOrderModal').then((mod) => ({ default: mod.CancelOrderModal }))
-)
-const RestoreOrderModal = lazy(() =>
-  import('./RestoreOrderModal').then((mod) => ({ default: mod.RestoreOrderModal }))
-)
-const AuditLogModal = lazy(() =>
-  import('@/components/audit/AuditLogModal').then((mod) => ({ default: mod.AuditLogModal }))
-)
-
-type Order = Tables<'orders'>
+type Order = Tables<'orders'> & {
+  customers: Tables<'customers'> | null
+  order_statuses: Tables<'order_statuses'> | null
+  order_lines: Tables<'order_lines'>[]
+}
 
 export function OrderActions({
   order,
@@ -31,17 +26,60 @@ export function OrderActions({
   const [showCancel, setShowCancel] = useState(false)
   const [showRestore, setShowRestore] = useState(false)
   const [showAuditLog, setShowAuditLog] = useState(false)
+  const [showAddLine, setShowAddLine] = useState(false)
+
+  // Helper function to close all modals
+  const closeAllModals = () => {
+    setShowPostOrder(false)
+    setShowCancel(false)
+    setShowRestore(false)
+    setShowAuditLog(false)
+    setShowAddLine(false)
+  }
+
+  // Helper function to open a specific modal (closes others first)
+  const openModal = (modalType: 'post' | 'cancel' | 'restore' | 'audit' | 'addLine') => {
+    closeAllModals()
+    // Use setTimeout to ensure state updates are processed
+    setTimeout(() => {
+      switch (modalType) {
+        case 'post':
+          setShowPostOrder(true)
+          break
+        case 'cancel':
+          setShowCancel(true)
+          break
+        case 'restore':
+          setShowRestore(true)
+          break
+        case 'audit':
+          setShowAuditLog(true)
+          break
+        case 'addLine':
+          setShowAddLine(true)
+          break
+      }
+    }, 0)
+  }
 
   // Post Order available for Under Review (02) or Reviewed with Changes (03)
   const canPostOrder = order.status_code === '02' || order.status_code === '03'
   const canEnterERP = false // ERP number entry removed
   const canCancel = order.status_code !== '06' && !order.ps_order_number && order.status_code !== '05' && order.status_code !== '04'
 
+  // Add Line available for NEW (01), REVIEWED NO CHANGES (02), or REVIEWED WITH CHANGES (03)
+  // and order has not been posted to PeopleSoft yet
+  const canAddLine = (
+    (order.status_code === '01' || order.status_code === '02' || order.status_code === '03') &&
+    !order.ps_order_number &&
+    order.status_code !== '06'
+  )
+
   return (
     <div className="flex flex-wrap justify-center" style={{ gap: '24px' }}>
       {canPostOrder && (
         <button
-          onClick={() => setShowPostOrder(true)}
+          onClick={() => openModal('post')}
           className="py-1.5 text-xs font-medium transition-colors"
           style={{
             border: '1px solid #00A3E1',
@@ -64,8 +102,32 @@ export function OrderActions({
         </button>
       )}
       {canEnterERP && <ERPNumberInput order={order} userId={userId} />}
+      {canAddLine && (
+        <button
+          onClick={() => openModal('addLine')}
+          className="py-1.5 text-xs font-medium transition-colors"
+          style={{
+            border: '1px solid #00A3E1',
+            borderRadius: '20px',
+            backgroundColor: 'white',
+            color: '#00A3E1',
+            paddingLeft: '16px',
+            paddingRight: '16px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#00A3E1'
+            e.currentTarget.style.color = 'white'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'white'
+            e.currentTarget.style.color = '#00A3E1'
+          }}
+        >
+          Add Line
+        </button>
+      )}
       <button
-        onClick={() => setShowAuditLog(true)}
+        onClick={() => openModal('audit')}
         className="py-1.5 text-xs font-medium transition-colors"
         style={{
           border: '1px solid #00A3E1',
@@ -88,7 +150,7 @@ export function OrderActions({
       </button>
       {order.status_code === '06' && (
         <button
-          onClick={() => setShowRestore(true)}
+          onClick={() => openModal('restore')}
           className="py-1.5 text-xs font-medium transition-colors"
           style={{
             border: '1px solid #10b981',
@@ -112,7 +174,7 @@ export function OrderActions({
       )}
       {canCancel && (
         <button
-          onClick={() => setShowCancel(true)}
+          onClick={() => openModal('cancel')}
           className="py-1.5 text-xs font-medium transition-colors"
           style={{
             border: '1px solid #00A3E1',
@@ -135,39 +197,38 @@ export function OrderActions({
         </button>
       )}
       {showPostOrder && (
-        <Suspense fallback={<div>Loading...</div>}>
-          <PostOrderModal
-            order={order}
-            userId={userId}
-            onClose={() => setShowPostOrder(false)}
-          />
-        </Suspense>
+        <PostOrderModal
+          order={order as any}
+          userId={userId}
+          onClose={closeAllModals}
+        />
       )}
       {showCancel && (
-        <Suspense fallback={<div>Loading...</div>}>
-          <CancelOrderModal
-            order={order}
-            userId={userId}
-            onClose={() => setShowCancel(false)}
-          />
-        </Suspense>
+        <CancelOrderModal
+          order={order}
+          userId={userId}
+          onClose={closeAllModals}
+        />
       )}
       {showRestore && (
-        <Suspense fallback={<div>Loading...</div>}>
-          <RestoreOrderModal
-            order={order}
-            userId={userId}
-            onClose={() => setShowRestore(false)}
-          />
-        </Suspense>
+        <RestoreOrderModal
+          order={order}
+          userId={userId}
+          onClose={closeAllModals}
+        />
       )}
       {showAuditLog && (
-        <Suspense fallback={<div>Loading...</div>}>
-          <AuditLogModal
-            orderId={order.id}
-            onClose={() => setShowAuditLog(false)}
-          />
-        </Suspense>
+        <AuditLogModal
+          orderId={order.id}
+          onClose={closeAllModals}
+        />
+      )}
+      {showAddLine && (
+        <AddLineModal
+          order={order as any}
+          userId={userId}
+          onClose={closeAllModals}
+        />
       )}
     </div>
   )
