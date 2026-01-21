@@ -33,6 +33,20 @@ export function CarrierForm({
     setError(null)
 
     try {
+      // Validate required fields
+      if (!formData.carrier_id.trim()) {
+        throw new Error('PeopleSoft Carrier ID is required')
+      }
+      if (!formData.ship_via_code.trim()) {
+        throw new Error('PeopleSoft Ship Via Code is required')
+      }
+      if (!formData.carrier_descr.trim()) {
+        throw new Error('Carrier Description is required')
+      }
+      if (!formData.ship_via_desc.trim()) {
+        throw new Error('Ship Via Description is required')
+      }
+
       if (mode === 'create') {
         const { error: insertError } = await supabase
           .from('carriers')
@@ -137,7 +151,7 @@ export function CarrierForm({
         <div className="grid grid-cols-2" style={{ gap: '48px' }}>
           <div>
             <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">
-              Carrier ID
+              PeopleSoft Carrier ID <span style={{ color: '#dc2626' }}>*</span>
             </label>
             <input
               type="text"
@@ -146,12 +160,13 @@ export function CarrierForm({
               disabled={mode === 'edit'}
               className="w-full rounded-lg border border-gray-300 px-5 py-4 text-[#333F48]"
               style={{ fontSize: '16px', backgroundColor: mode === 'edit' ? '#F9FAFB' : 'white', borderRadius: '5px' }}
+              required
             />
           </div>
 
           <div>
             <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">
-              Ship Via Code
+              PeopleSoft Ship Via Code <span style={{ color: '#dc2626' }}>*</span>
             </label>
             <input
               type="text"
@@ -160,6 +175,7 @@ export function CarrierForm({
               disabled={mode === 'edit'}
               className="w-full rounded-lg border border-gray-300 px-5 py-4 text-[#333F48]"
               style={{ fontSize: '16px', backgroundColor: mode === 'edit' ? '#F9FAFB' : 'white', borderRadius: '5px' }}
+              required
             />
           </div>
         </div>
@@ -170,7 +186,7 @@ export function CarrierForm({
         <div className="grid grid-cols-2" style={{ gap: '48px' }}>
           <div>
             <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">
-              Carrier Description
+              Carrier Description <span style={{ color: '#dc2626' }}>*</span>
             </label>
             <input
               type="text"
@@ -184,7 +200,7 @@ export function CarrierForm({
 
           <div>
             <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">
-              Ship Via Description
+              Ship Via Description <span style={{ color: '#dc2626' }}>*</span>
             </label>
             <input
               type="text"

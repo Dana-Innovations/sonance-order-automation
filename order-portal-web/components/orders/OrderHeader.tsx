@@ -105,6 +105,7 @@ export function OrderHeader({
   const [shipViaOptions, setShipViaOptions] = useState<{ ship_via_code: string; ship_via_desc: string }[]>([])
   const [notesExpanded, setNotesExpanded] = useState(false)
   const [headerExpanded, setHeaderExpanded] = useState(true)
+  const [assignedCSR, setAssignedCSR] = useState<{ first_name: string; last_name: string } | null>(null)
 
   const supabase = createClient()
   const router = useRouter()
@@ -116,7 +117,7 @@ export function OrderHeader({
         .from('carriers')
         .select('carrier_id, carrier_descr')
         .order('carrier_id')
-      
+
       if (data) {
         // Get distinct carriers (unique carrier_id values)
         const uniqueCarriers = data.reduce((acc, curr) => {
@@ -130,6 +131,29 @@ export function OrderHeader({
     }
     fetchCarriers()
   }, [])
+
+  // Fetch assigned CSR details when component mounts
+  useEffect(() => {
+    const fetchAssignedCSR = async () => {
+      if (!order.csr_id) {
+        setAssignedCSR(null)
+        return
+      }
+
+      const { data } = await supabase
+        .from('csrs')
+        .select('first_name, last_name')
+        .eq('email', order.csr_id)
+        .single()
+
+      if (data) {
+        setAssignedCSR(data)
+      } else {
+        setAssignedCSR(null)
+      }
+    }
+    fetchAssignedCSR()
+  }, [order.csr_id])
 
   // Fetch ship via options when carrier changes
   useEffect(() => {
@@ -297,7 +321,11 @@ export function OrderHeader({
               <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', whiteSpace: 'nowrap' }}>PS Acct ID</td>
               <td style={{ color: '#333F48', paddingRight: '24px' }}>{order.ps_customer_id || '—'}</td>
               <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', whiteSpace: 'nowrap' }}>Email Date</td>
-              <td style={{ color: '#333F48' }}>{order.email_received_at ? format(parseISO(order.email_received_at), 'MMM d, yyyy') : '—'}</td>
+              <td style={{ color: '#333F48', paddingRight: '24px' }}>{order.email_received_at ? format(parseISO(order.email_received_at), 'MMM d, yyyy') : '—'}</td>
+              <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', whiteSpace: 'nowrap' }}>Assigned ISR</td>
+              <td style={{ color: '#333F48' }}>
+                {assignedCSR ? `${assignedCSR.first_name} ${assignedCSR.last_name}` : '—'}
+              </td>
             </tr>
           </tbody>
         </table>

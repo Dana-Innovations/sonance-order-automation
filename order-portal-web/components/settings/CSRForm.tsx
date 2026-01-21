@@ -34,6 +34,17 @@ export function CSRForm({
     setError(null)
 
     try {
+      // Validate required fields
+      if (!formData.email.trim()) {
+        throw new Error('Email is required')
+      }
+      if (!formData.first_name.trim()) {
+        throw new Error('First Name is required')
+      }
+      if (!formData.last_name.trim()) {
+        throw new Error('Last Name is required')
+      }
+
       if (mode === 'create') {
         const { error: insertError } = await supabase
           .from('csrs')
@@ -137,19 +148,22 @@ export function CSRForm({
 
       {/* Email field */}
       <div className="pb-4 border-b border-gray-200">
-        <div>
-          <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">
-            Email
-          </label>
-          <input
-            type="email"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            disabled={mode === 'edit'}
-            className="w-full rounded-lg border border-gray-300 px-5 py-4 text-[#333F48]"
-            style={{ fontSize: '16px', backgroundColor: mode === 'edit' ? '#F9FAFB' : 'white', borderRadius: '5px' }}
-            required
-          />
+        <div className="grid grid-cols-2" style={{ gap: '48px' }}>
+          <div>
+            <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">
+              Email <span style={{ color: '#dc2626' }}>*</span>
+            </label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              disabled={mode === 'edit'}
+              className="w-full rounded-lg border border-gray-300 px-5 py-4 text-[#333F48]"
+              style={{ fontSize: '16px', backgroundColor: mode === 'edit' ? '#F9FAFB' : 'white', borderRadius: '5px' }}
+              required
+            />
+          </div>
+          <div></div>
         </div>
       </div>
 
@@ -158,7 +172,7 @@ export function CSRForm({
         <div className="grid grid-cols-2" style={{ gap: '48px' }}>
           <div>
             <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">
-              First Name
+              First Name <span style={{ color: '#dc2626' }}>*</span>
             </label>
             <input
               type="text"
@@ -172,7 +186,7 @@ export function CSRForm({
 
           <div>
             <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">
-              Last Name
+              Last Name <span style={{ color: '#dc2626' }}>*</span>
             </label>
             <input
               type="text"

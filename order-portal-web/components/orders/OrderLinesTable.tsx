@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { PriceValidation } from './PriceValidation'
 import { LineItemEditor } from './LineItemEditor'
 import { Tables } from '@/lib/types/database'
-import { ShoppingCart, X } from 'lucide-react'
+import { ShoppingCart, X, AlertTriangle, CheckCircle } from 'lucide-react'
 
 type OrderLine = Tables<'order_lines'>
 type Order = Tables<'orders'> & {
@@ -40,8 +40,19 @@ export function OrderLinesTable({
   // Local state for sonance prices (to show updated values after lookup)
   const [sonancePrices, setSonancePrices] = useState<Record<string, number | null>>({})
 
+  // Price comparison state for warning icons
+  const [priceComparisons, setPriceComparisons] = useState<Record<string, {
+    variance: number
+    custPrice: number
+    sonancePrice: number
+    hasValidPrice: boolean
+  }>>({})
+
   // Track which line is being edited
   const [editingLineId, setEditingLineId] = useState<string | null>(null)
+
+  // Track which line's price tooltip is showing
+  const [hoveredPriceLineId, setHoveredPriceLineId] = useState<string | null>(null)
 
   const handleCancelLine = async (line: OrderLine) => {
     if (!confirm('Are you sure you want to cancel this line?')) return
@@ -107,17 +118,23 @@ export function OrderLinesTable({
     const lookupAndUpdatePrices = async () => {
       const lines = order.order_lines || []
       const updatedPrices: Record<string, number | null> = {}
-      
+      const updatedComparisons: Record<string, {
+        variance: number
+        custPrice: number
+        sonancePrice: number
+        hasValidPrice: boolean
+      }> = {}
+
       for (const line of lines) {
-        // Get the SKU and UOM to use for lookup (sonance values or fall back to cust values)
+        // Get the SKU and UOM to use for lookup (sonance values only)
         const skuToLookup = line.sonance_prod_sku || line.cust_product_sku
-        const uomToLookup = line.sonance_uom || line.cust_uom
-        
+        const uomToLookup = line.sonance_uom
+
         if (!skuToLookup) {
           updatedPrices[line.id] = null
           continue
         }
-        
+
         // Always lookup price from customer_product_pricing to get the current value
         // First try exact match with UOM
         let { data: pricing } = await supabase
@@ -127,7 +144,9 @@ export function OrderLinesTable({
           .eq('product_id', skuToLookup)
           .eq('uom', uomToLookup || 'EA')
           .maybeSingle()
-        
+
+        let hasMatchingUom = !!pricing
+
         // If no exact match, try without UOM filter
         if (!pricing) {
           const { data: fallbackPricing } = await supabase
@@ -137,13 +156,14 @@ export function OrderLinesTable({
             .eq('product_id', skuToLookup)
             .limit(1)
             .maybeSingle()
-          
+
           pricing = fallbackPricing
+          hasMatchingUom = false
         }
-        
+
         if (pricing?.dfi_price != null) {
           updatedPrices[line.id] = pricing.dfi_price
-          
+
           // Only update the order_lines table if the current value is different
           if (line.sonance_unit_price !== pricing.dfi_price) {
             await supabase
@@ -151,15 +171,31 @@ export function OrderLinesTable({
               .update({ sonance_unit_price: pricing.dfi_price })
               .eq('id', line.id)
           }
+
+          // Calculate price variance if both prices exist
+          const custPrice = line.cust_unit_price
+          const sonancePrice = pricing.dfi_price
+
+          if (custPrice != null && custPrice > 0) {
+            const variance = Math.abs(custPrice - sonancePrice) / custPrice * 100
+
+            updatedComparisons[line.id] = {
+              variance,
+              custPrice,
+              sonancePrice,
+              hasValidPrice: true
+            }
+          }
         } else {
           // If no pricing found, use the existing sonance_unit_price if available
           updatedPrices[line.id] = line.sonance_unit_price ?? null
         }
       }
-      
+
       setSonancePrices(updatedPrices)
+      setPriceComparisons(updatedComparisons)
     }
-    
+
     lookupAndUpdatePrices()
   }, [order.id, lineSkusKey, order.ps_customer_id, supabase])
 
@@ -240,12 +276,16 @@ export function OrderLinesTable({
 
   const calculateCustomerTotal = () => {
     return order.order_lines.reduce((sum, line) => {
+      // Exclude cancelled lines from totals
+      if (line.line_status === 'cancelled') return sum
       return sum + (Number(line.cust_line_total) || 0)
     }, 0)
   }
 
   const calculateSonanceTotal = () => {
     return order.order_lines.reduce((sum, line) => {
+      // Exclude cancelled lines from totals
+      if (line.line_status === 'cancelled') return sum
       const qty = line.sonance_quantity ?? line.cust_quantity ?? 0
       const price = sonancePrices[line.id] ?? null
       if (price != null) {
@@ -253,6 +293,145 @@ export function OrderLinesTable({
       }
       return sum
     }, 0)
+  }
+
+  const renderPriceWarningIcon = (line: OrderLine) => {
+    const comparison = priceComparisons[line.id]
+
+    // Only show icon if:
+    // 1. Both prices exist and are valid
+    // 2. Sonance price has valid UOM match
+    if (!comparison?.hasValidPrice) return null
+
+    const variance = comparison.variance
+    const isHovered = hoveredPriceLineId === line.id
+
+    // Exact match - show green checkmark
+    if (variance < 0.01) {
+      return (
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          <CheckCircle
+            className="text-green-600"
+            style={{ width: '16px', height: '16px', cursor: 'help', color: '#16a34a' }}
+            onMouseEnter={() => setHoveredPriceLineId(line.id)}
+            onMouseLeave={() => setHoveredPriceLineId(null)}
+          />
+          {isHovered && (
+            <div style={{
+              position: 'absolute',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              bottom: '24px',
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #86efac',
+              borderRadius: '6px',
+              padding: '8px 12px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              zIndex: 1000,
+              minWidth: '220px',
+              whiteSpace: 'nowrap'
+            }}>
+              <div style={{ fontSize: '11px', fontWeight: '600', color: '#15803d', marginBottom: '4px' }}>
+                ✓ Prices Match
+              </div>
+              <div style={{ fontSize: '10px', color: '#166534' }}>
+                Customer PO and Sonance pricing are identical
+              </div>
+              {/* Tooltip arrow */}
+              <div style={{
+                position: 'absolute',
+                bottom: '-6px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '0',
+                height: '0',
+                borderLeft: '6px solid transparent',
+                borderRight: '6px solid transparent',
+                borderTop: '6px solid #86efac'
+              }} />
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    // Price difference - show warning icon
+    const isHighVariance = variance > 5
+    const iconColor = isHighVariance ? '#dc2626' : '#f59e0b'
+    const bgColor = isHighVariance ? '#fef2f2' : '#fffbeb'
+    const borderColor = isHighVariance ? '#fca5a5' : '#fde68a'
+    const textColor = isHighVariance ? '#991b1b' : '#92400e'
+    const priceDiff = comparison.sonancePrice - comparison.custPrice
+    const diffSign = priceDiff > 0 ? '+' : ''
+    const priceDirection = priceDiff > 0 ? 'higher' : 'lower'
+
+    return (
+      <div style={{ position: 'relative', display: 'inline-block' }}>
+        <AlertTriangle
+          className="cursor-help"
+          style={{
+            width: '16px',
+            height: '16px',
+            color: iconColor
+          }}
+          onMouseEnter={() => setHoveredPriceLineId(line.id)}
+          onMouseLeave={() => setHoveredPriceLineId(null)}
+        />
+        {isHovered && (
+          <div style={{
+            position: 'absolute',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            bottom: '24px',
+            backgroundColor: bgColor,
+            border: `1px solid ${borderColor}`,
+            borderRadius: '6px',
+            padding: '10px 12px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            zIndex: 1000,
+            minWidth: '240px',
+            whiteSpace: 'nowrap'
+          }}>
+            <div style={{ fontSize: '11px', fontWeight: '600', color: textColor, marginBottom: '6px' }}>
+              ⚠ Price Mismatch Detected
+            </div>
+            <div style={{ fontSize: '10px', color: textColor, lineHeight: '1.5' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                <span style={{ fontWeight: '500' }}>Customer PO:</span>
+                <span style={{ fontWeight: '600' }}>${comparison.custPrice.toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                <span style={{ fontWeight: '500' }}>Sonance Pricing:</span>
+                <span style={{ fontWeight: '600' }}>${comparison.sonancePrice.toFixed(2)}</span>
+              </div>
+              <div style={{ borderTop: `1px solid ${borderColor}`, marginTop: '6px', paddingTop: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontWeight: '500' }}>Difference:</span>
+                  <span style={{ fontWeight: '700' }}>
+                    {diffSign}${Math.abs(priceDiff).toFixed(2)} ({diffSign}{variance.toFixed(1)}%)
+                  </span>
+                </div>
+                <div style={{ fontSize: '9px', marginTop: '4px', fontStyle: 'italic', opacity: 0.8 }}>
+                  Sonance price is {variance.toFixed(1)}% {priceDirection}
+                </div>
+              </div>
+            </div>
+            {/* Tooltip arrow */}
+            <div style={{
+              position: 'absolute',
+              bottom: '-6px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '0',
+              height: '0',
+              borderLeft: '6px solid transparent',
+              borderRight: '6px solid transparent',
+              borderTop: `6px solid ${borderColor}`
+            }} />
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -264,7 +443,7 @@ export function OrderLinesTable({
         </h3>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+        <table className="w-full" style={{ borderCollapse: 'collapse', tableLayout: 'fixed' }}>
           <thead className="bg-muted">
             <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
               <th style={{ fontSize: '0.65rem', padding: '8px 4px', width: '32px', textAlign: 'center', verticalAlign: 'bottom' }} className="font-medium uppercase text-muted-foreground">
@@ -290,6 +469,9 @@ export function OrderLinesTable({
               </th>
               <th style={{ fontSize: '0.65rem', padding: '8px 4px', width: '70px', textAlign: 'center', verticalAlign: 'bottom' }} className="font-medium uppercase text-muted-foreground">
                 Cust Price
+              </th>
+              <th style={{ fontSize: '0.65rem', padding: '8px 2px', width: '20px', textAlign: 'center', verticalAlign: 'bottom' }} className="font-medium uppercase text-muted-foreground">
+                {/* Warning icon column */}
               </th>
               <th style={{ fontSize: '0.65rem', padding: '8px 4px', width: '70px', textAlign: 'center', verticalAlign: 'bottom', color: '#00A3E1' }} className="font-medium uppercase">
                 Sonance Price
@@ -319,7 +501,28 @@ export function OrderLinesTable({
                   {line.cust_product_sku || 'N/A'}
                 </td>
                 <td style={{ fontSize: '0.75rem', padding: '10px 6px', verticalAlign: 'top', width: '72px', textDecoration: strikethrough }} className="text-foreground">
-                  {line.validated_sku || line.sonance_prod_sku || <span style={{ color: 'red' }}>---</span>}
+                  {(() => {
+                    const productValue = line.validated_sku || line.sonance_prod_sku
+                    const hasDescription = sonanceDescriptions?.[line.id]
+                    const isInvalid = productValue && !hasDescription
+
+                    if (!productValue) {
+                      return <span style={{ color: 'red' }}>---</span>
+                    }
+
+                    if (isInvalid) {
+                      return (
+                        <span
+                          style={{ color: 'red', fontWeight: 'bold', cursor: 'help' }}
+                          title="Product not found in customer pricing - not valid for this customer"
+                        >
+                          {productValue}
+                        </span>
+                      )
+                    }
+
+                    return productValue
+                  })()}
                 </td>
                 <td style={{ fontSize: '0.75rem', padding: '10px 6px', verticalAlign: 'top', width: '200px', maxWidth: '200px', lineHeight: '1.4', textDecoration: strikethrough }} className="text-foreground">
                   <div style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
@@ -328,20 +531,45 @@ export function OrderLinesTable({
                 </td>
                 <td style={{ fontSize: '0.75rem', padding: '10px 6px', verticalAlign: 'top', width: '160px', maxWidth: '160px', lineHeight: '1.4', textDecoration: strikethrough }} className="text-foreground">
                   <div style={{ wordWrap: 'break-word', whiteSpace: 'normal' }}>
-                    {sonanceDescriptions?.[line.id] || (!line.validated_sku && !line.sonance_prod_sku ? <span style={{ color: 'red' }}>N/A</span> : 'N/A')}
+                    {(() => {
+                      const productValue = line.validated_sku || line.sonance_prod_sku
+                      const description = sonanceDescriptions?.[line.id]
+
+                      if (description) {
+                        return description
+                      }
+
+                      // No description found
+                      if (!productValue) {
+                        return <span style={{ color: 'red' }}>N/A</span>
+                      }
+
+                      // Product exists but no description (not valid for customer)
+                      return (
+                        <span
+                          style={{ color: 'red', fontWeight: 'bold', cursor: 'help' }}
+                          title="Product not found in customer pricing - not valid for this customer"
+                        >
+                          N/A
+                        </span>
+                      )
+                    })()}
                   </div>
                 </td>
                 <td style={{ fontSize: '0.75rem', padding: '10px 6px', verticalAlign: 'top', textAlign: 'right', width: '28px', textDecoration: strikethrough }} className="text-foreground">
                   {Math.round(line.sonance_quantity ?? line.cust_quantity ?? 0)}
                 </td>
                 <td style={{ fontSize: '0.75rem', padding: '10px 4px', verticalAlign: 'top', width: '24px', textDecoration: strikethrough }} className="text-foreground">
-                  {line.sonance_uom || line.cust_uom || 'N/A'}
+                  {line.sonance_uom || 'N/A'}
                 </td>
                 <td style={{ fontSize: '0.75rem', padding: '10px 4px', verticalAlign: 'top', textAlign: 'right', width: '70px', textDecoration: strikethrough }} className="text-foreground">
                   ${formatCurrency(line.cust_unit_price)}
                 </td>
+                <td style={{ fontSize: '0.75rem', padding: '10px 2px', verticalAlign: 'top', textAlign: 'center', width: '20px' }}>
+                  {!isLineCancelled && renderPriceWarningIcon(line)}
+                </td>
                 <td style={{ fontSize: '0.75rem', padding: '10px 4px', verticalAlign: 'top', textAlign: 'right', width: '70px', textDecoration: strikethrough }} className="text-foreground">
-                  {sonancePrices[line.id] != null ? `$${formatCurrency(sonancePrices[line.id])}` : ''}
+                  {sonancePrices[line.id] != null ? `$${formatCurrency(sonancePrices[line.id])}` : <span style={{ color: 'red', fontWeight: 'bold' }}>--</span>}
                 </td>
                 <td style={{ fontSize: '0.75rem', padding: '10px 6px', verticalAlign: 'top', textAlign: 'right', width: '70px', textDecoration: strikethrough }} className="font-medium text-foreground">
                   ${formatCurrency(line.cust_line_total)}
@@ -353,7 +581,7 @@ export function OrderLinesTable({
                     if (price != null) {
                       return `$${formatCurrency(qty * price)}`
                     }
-                    return ''
+                    return <span style={{ color: 'red', fontWeight: 'bold' }}>--</span>
                   })()}
                 </td>
                 <td style={{ padding: '10px 8px', verticalAlign: 'top' }}>
@@ -363,6 +591,7 @@ export function OrderLinesTable({
                       orderId={order.id}
                       userId={userId}
                       psCustomerId={order.ps_customer_id || ''}
+                      currencyCode={order.currency_code || 'USD'}
                       isCancelled={!canEdit}
                       isLineCancelled={isLineCancelled}
                       onRestore={() => handleRestoreLine(line)}
@@ -400,16 +629,18 @@ export function OrderLinesTable({
               </tr>
               )
             })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Order Totals Footer */}
-      <div className="border-t border-border pt-3">
-        <table className="w-full" style={{ borderCollapse: 'collapse' }}>
-          <tbody>
-            <tr>
-              <td colSpan={9} style={{ fontSize: '13px', padding: '8px 6px', textAlign: 'right', verticalAlign: 'middle' }} className="font-semibold text-foreground">
+            {/* Order Totals Row */}
+            <tr style={{ borderTop: '2px solid #e2e8f0' }}>
+              <td style={{ width: '32px' }}></td>
+              <td style={{ width: '90px' }}></td>
+              <td style={{ width: '72px' }}></td>
+              <td style={{ width: '200px' }}></td>
+              <td style={{ width: '160px' }}></td>
+              <td style={{ width: '28px' }}></td>
+              <td style={{ width: '24px' }}></td>
+              <td style={{ width: '70px' }}></td>
+              <td style={{ width: '20px' }}></td>
+              <td style={{ fontSize: '13px', padding: '8px 4px', textAlign: 'right', width: '70px', verticalAlign: 'middle' }} className="font-semibold text-foreground">
                 Totals:
               </td>
               <td style={{ fontSize: '13px', padding: '8px 6px', textAlign: 'right', width: '70px', verticalAlign: 'middle' }} className="font-bold text-foreground">
