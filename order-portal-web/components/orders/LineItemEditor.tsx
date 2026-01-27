@@ -37,11 +37,11 @@ export function LineItemEditor({
   const [isLookupModalOpen, setIsLookupModalOpen] = useState(false)
   const [validUoms, setValidUoms] = useState<string[]>(['EA', 'PR', 'BX'])
   const [formData, setFormData] = useState({
-    quantity: line.cust_quantity?.toString() || '',
+    quantity: (line.sonance_quantity ?? line.cust_quantity)?.toString() || '',
     unitPrice: line.sonance_unit_price?.toString() || '',
     description: line.cust_line_desc || '',
     productSku: line.cust_product_sku || '',
-    uom: line.cust_uom || '',
+    uom: line.sonance_uom || '',
     sonanceItem: line.sonance_prod_sku || '',
   })
   const supabase = createClient()
@@ -150,12 +150,9 @@ export function LineItemEditor({
       }
     }
 
-    // Build update object - include sonance_uom if we looked it up
+    // Build update object - ONLY update sonance fields, never customer fields (cust_line_desc, cust_uom, cust_quantity, cust_product_sku)
     const updateData: Record<string, any> = {
-      cust_quantity: quantity,
-      cust_line_desc: formData.description,
-      cust_product_sku: formData.productSku,
-      cust_uom: formData.uom,
+      sonance_quantity: quantity,
       sonance_prod_sku: formData.sonanceItem,
       sonance_unit_price: unitPrice,
       validated_sku: formData.sonanceItem,
@@ -163,9 +160,11 @@ export function LineItemEditor({
       is_validated: true,
     }
 
-    // If we looked up a UOM from pricing, also update sonance_uom
+    // If we looked up a UOM from pricing, update sonance_uom (but never cust_uom)
     if (lookedUpUom) {
       updateData.sonance_uom = lookedUpUom
+    } else if (formData.uom) {
+      updateData.sonance_uom = formData.uom
     }
     
     const { error } = await supabase
@@ -188,17 +187,17 @@ export function LineItemEditor({
         new_value: formData.sonanceItem,
       })
     }
-    if (line.cust_quantity?.toString() !== formData.quantity) {
+    if ((line.sonance_quantity ?? line.cust_quantity)?.toString() !== formData.quantity) {
       changes.push({
-        field_name: 'quantity',
-        old_value: line.cust_quantity?.toString() || '',
+        field_name: 'sonance_quantity',
+        old_value: (line.sonance_quantity ?? line.cust_quantity)?.toString() || '',
         new_value: formData.quantity,
       })
     }
-    if (line.cust_uom !== formData.uom) {
+    if (line.sonance_uom !== formData.uom) {
       changes.push({
         field_name: 'uom',
-        old_value: line.cust_uom || '',
+        old_value: line.sonance_uom || '',
         new_value: formData.uom,
       })
     }
@@ -231,6 +230,28 @@ export function LineItemEditor({
         old_value: change.old_value,
         new_value: change.new_value,
         reason: (change as any).reason || (change.field_name === 'sonance_unit_price' ? 'Sonance price correction' : undefined),
+      })
+    }
+
+    // If order status is "Rev No Changes" (02), update it to "Rev With Changes" (03)
+    const { data: orderData } = await supabase
+      .from('orders')
+      .select('status_code')
+      .eq('id', orderId)
+      .single()
+
+    if (orderData?.status_code === '02') {
+      await supabase
+        .from('orders')
+        .update({ status_code: '03' })
+        .eq('id', orderId)
+
+      // Log status change
+      await supabase.from('order_status_history').insert({
+        order_id: orderId,
+        status_code: '03',
+        changed_by: userId,
+        notes: 'Order line modified - status changed from Rev No Changes to Rev With Changes',
       })
     }
 
