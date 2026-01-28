@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Tables } from '@/lib/types/database'
 import { createPortal } from 'react-dom'
+import { ChildAccountsManagement } from './ChildAccountsManagement'
 
 type Customer = Tables<'customers'>
 type CSR = {
@@ -40,6 +41,9 @@ export function CustomerForm({
     order_header_prompt: customer?.order_header_prompt || '',
     MultiAccount_Prompt: customer?.MultiAccount_Prompt || '',
     sharepoint_folder_id: customer?.sharepoint_folder_id || '',
+    default_carrier: customer?.default_carrier || '',
+    default_ship_via: customer?.default_ship_via || '',
+    default_shipto_name: customer?.default_shipto_name || '',
   })
 
   // Copy prompts modal state
@@ -53,10 +57,77 @@ export function CustomerForm({
   })
   const [isMounted, setIsMounted] = useState(false)
 
+  // Carriers and ship via options
+  const [carriers, setCarriers] = useState<{ carrier_id: string; carrier_descr: string }[]>([])
+  const [shipViaOptions, setShipViaOptions] = useState<{ ship_via_code: string; ship_via_desc: string }[]>([])
+
+  // Multi-account toggle state
+  const [isMultiAccount, setIsMultiAccount] = useState(customer?.ps_customer_id === 'MULTI')
+
   // Track if component is mounted (client-side only)
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  // Handle multi-account toggle
+  const handleMultiAccountToggle = (enabled: boolean) => {
+    setIsMultiAccount(enabled)
+    if (enabled) {
+      setFormData({ ...formData, ps_customer_id: 'MULTI' })
+    } else {
+      setFormData({ ...formData, ps_customer_id: '' })
+    }
+  }
+
+  // Fetch carriers on mount
+  useEffect(() => {
+    const fetchCarriers = async () => {
+      const { data, error } = await supabase
+        .from('carriers')
+        .select('carrier_id, carrier_descr')
+        .eq('is_active', true)
+        .order('carrier_id')
+
+      if (error) {
+        console.error('Error fetching carriers:', error)
+        return
+      }
+
+      // Get unique carriers
+      const uniqueCarriers = Array.from(
+        new Map(data.map(item => [item.carrier_id, item])).values()
+      )
+
+      setCarriers(uniqueCarriers)
+    }
+
+    fetchCarriers()
+  }, [])
+
+  // Fetch ship via options when carrier is selected
+  useEffect(() => {
+    const fetchShipViaOptions = async () => {
+      if (!formData.default_carrier) {
+        setShipViaOptions([])
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('carriers')
+        .select('ship_via_code, ship_via_desc')
+        .eq('carrier_id', formData.default_carrier)
+        .order('ship_via_code')
+
+      if (error) {
+        console.error('Error fetching ship via options:', error)
+        return
+      }
+
+      setShipViaOptions(data || [])
+    }
+
+    fetchShipViaOptions()
+  }, [formData.default_carrier])
 
   // Auto-resize textareas on mount and when data changes
   useEffect(() => {
@@ -214,6 +285,9 @@ export function CustomerForm({
             order_header_prompt: formData.order_header_prompt || null,
             MultiAccount_Prompt: formData.MultiAccount_Prompt || null,
             sharepoint_folder_id: formData.sharepoint_folder_id,
+            default_carrier: formData.default_carrier || null,
+            default_ship_via: formData.default_ship_via || null,
+            default_shipto_name: formData.default_shipto_name || null,
           })
 
         if (insertError) throw insertError
@@ -232,6 +306,9 @@ export function CustomerForm({
             order_header_prompt: formData.order_header_prompt || null,
             MultiAccount_Prompt: formData.MultiAccount_Prompt || null,
             sharepoint_folder_id: formData.sharepoint_folder_id,
+            default_carrier: formData.default_carrier || null,
+            default_ship_via: formData.default_ship_via || null,
+            default_shipto_name: formData.default_shipto_name || null,
             updated_at: new Date().toISOString(),
           })
           .eq('ps_customer_id', customer.ps_customer_id)
@@ -312,6 +389,82 @@ export function CustomerForm({
           </div>
         )}
 
+      {/* Customer Configuration Toggles */}
+      <div className="pb-4 border-b border-gray-200">
+        <div className="grid grid-cols-2" style={{ gap: '48px' }}>
+          {/* Multi-Account Toggle - Only show in edit mode */}
+          {mode === 'edit' && (
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer" style={{ marginBottom: '8px' }}>
+                <input
+                  type="checkbox"
+                  checked={isMultiAccount}
+                  onChange={(e) => handleMultiAccountToggle(e.target.checked)}
+                  className="rounded cursor-pointer"
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    border: '2px solid #d1d5db',
+                    borderRadius: '4px',
+                    backgroundColor: isMultiAccount ? '#00A3E1' : 'white',
+                    backgroundImage: isMultiAccount ? "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E\")" : 'none',
+                    backgroundSize: '100% 100%',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                  }}
+                />
+                <span className="text-sm text-[#333F48] font-medium">Multi-Account Customer</span>
+              </label>
+              <p className="text-xs text-[#6b7a85] ml-6">
+                {isMultiAccount
+                  ? 'Multiple PeopleSoft account IDs. Add at least 2 child accounts below.'
+                  : 'Enable for multi-territory customers.'}
+              </p>
+            </div>
+          )}
+
+          {/* Customer Status Toggle */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer" style={{ marginBottom: '8px' }}>
+              <input
+                type="checkbox"
+                checked={formData.is_active}
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                className="rounded cursor-pointer"
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  border: '2px solid #d1d5db',
+                  borderRadius: '4px',
+                  backgroundColor: formData.is_active ? '#00A3E1' : 'white',
+                  backgroundImage: formData.is_active ? "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E\")" : 'none',
+                  backgroundSize: '100% 100%',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat'
+                }}
+              />
+              <span className="text-sm text-[#333F48] font-medium">Customer Status</span>
+            </label>
+            <p className="text-xs text-[#6b7a85] ml-6">Checked = Active, Unchecked = Inactive</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Info message for create mode if they enter MULTI */}
+      {mode === 'create' && formData.ps_customer_id.toUpperCase() === 'MULTI' && (
+        <div className="pb-4 border-b border-gray-200">
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+            <p className="text-xs text-blue-800">
+              💡 <strong>Multi-Account Customer:</strong> After creating this customer, you'll be able to add child PeopleSoft account IDs. You must add at least 2 child accounts.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* PS Customer ID field */}
       <div className="pb-4 border-b border-gray-200">
         <div className="grid grid-cols-2" style={{ gap: '48px' }}>
@@ -324,10 +477,22 @@ export function CustomerForm({
               value={formData.ps_customer_id}
               onChange={(e) => setFormData({ ...formData, ps_customer_id: e.target.value })}
               className="w-full rounded-lg border border-gray-300 bg-white px-5 py-4 text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-2 focus:ring-[#00A3E1]/20"
-              style={{ fontSize: '16px', borderRadius: '7.25px' }}
-              placeholder="Enter PS Customer ID"
+              style={{
+                fontSize: '16px',
+                borderRadius: '7.25px',
+                backgroundColor: isMultiAccount ? '#f3f4f6' : 'white',
+                cursor: isMultiAccount ? 'not-allowed' : 'text'
+              }}
+              placeholder={isMultiAccount ? 'MULTI (auto-set)' : 'Enter PS Customer ID'}
               required
+              readOnly={isMultiAccount}
+              disabled={isMultiAccount}
             />
+            {isMultiAccount && (
+              <p className="text-xs text-[#6b7a85] mt-1">
+                Auto-set to MULTI for multi-account customers
+              </p>
+            )}
           </div>
 
           <div>
@@ -407,19 +572,92 @@ export function CustomerForm({
           <div></div>
         </div>
 
-        <div style={{ paddingTop: '16px' }}>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.is_active}
-              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-              className="rounded border-gray-300 text-[#00A3E1] focus:ring-[#00A3E1]"
-              style={{ width: '20px', height: '20px' }}
-            />
-            <span className="text-sm text-[#333F48]">Active</span>
-          </label>
-          <p className="text-xs text-[#6b7a85] mt-1 ml-6">Checked = Active, Unchecked = Inactive</p>
+        {/* Default Values Section */}
+        <div className="pt-4 border-t border-gray-200" style={{ marginTop: '24px' }}>
+          <h3 className="text-sm font-semibold text-[#333F48] mb-4">Default Order Values</h3>
+
+          <div className="grid grid-cols-2" style={{ gap: '48px' }}>
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">
+                Default Carrier
+              </label>
+              <select
+                value={formData.default_carrier}
+                onChange={(e) => {
+                  setFormData({
+                    ...formData,
+                    default_carrier: e.target.value,
+                    default_ship_via: '' // Reset ship via when carrier changes
+                  })
+                }}
+                className="w-full rounded-lg border border-gray-300 bg-white px-5 py-4 text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-2 focus:ring-[#00A3E1]/20"
+                style={{ fontSize: '16px', borderRadius: '7.25px' }}
+              >
+                <option value="">-- Select Carrier --</option>
+                {carriers.map((carrier) => (
+                  <option key={carrier.carrier_id} value={carrier.carrier_id}>
+                    {carrier.carrier_id} - {carrier.carrier_descr}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-[#6b7a85]" style={{ marginTop: '2px' }}>
+                Default carrier for new orders
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">
+                Default Ship Via
+              </label>
+              <select
+                value={formData.default_ship_via}
+                onChange={(e) => setFormData({ ...formData, default_ship_via: e.target.value })}
+                className="w-full rounded-lg border border-gray-300 bg-white px-5 py-4 text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-2 focus:ring-[#00A3E1]/20"
+                style={{ fontSize: '16px', borderRadius: '7.25px' }}
+                disabled={!formData.default_carrier}
+              >
+                <option value="">-- Select Ship Via --</option>
+                {shipViaOptions.map((option) => (
+                  <option key={option.ship_via_code} value={option.ship_via_code}>
+                    {option.ship_via_code} - {option.ship_via_desc}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-[#6b7a85]" style={{ marginTop: '2px' }}>
+                Default ship via for new orders
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2" style={{ gap: '48px', marginTop: '12px' }}>
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">
+                Default Ship To Name
+              </label>
+              <input
+                type="text"
+                value={formData.default_shipto_name}
+                onChange={(e) => setFormData({ ...formData, default_shipto_name: e.target.value })}
+                className="w-full rounded-lg border border-gray-300 bg-white px-5 py-4 text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-2 focus:ring-[#00A3E1]/20"
+                style={{ fontSize: '16px', borderRadius: '7.25px' }}
+                placeholder="Enter default ship-to name"
+              />
+              <p className="text-xs text-[#6b7a85]" style={{ marginTop: '2px' }}>
+                Default ship-to name for new orders
+              </p>
+            </div>
+
+            <div></div>
+          </div>
         </div>
+
+        {/* Child Accounts Management - Show for multi-account customers */}
+        {isMultiAccount && mode === 'edit' && formData.ps_customer_id === 'MULTI' && (
+          <ChildAccountsManagement
+            customerId="MULTI"
+            isEditMode={mode === 'edit'}
+          />
+        )}
 
         <div className="pt-4 border-t border-gray-200" style={{ marginTop: '24px' }}>
           <div className="flex items-center justify-between mb-4">

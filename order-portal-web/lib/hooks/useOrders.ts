@@ -47,11 +47,23 @@ export function useOrders({
 
       const customerIds = customers.map((c) => c.ps_customer_id)
 
+      // For multi-account customers, also get child account IDs
+      const { data: childAccounts } = await supabase
+        .from('customer_child_accounts')
+        .select('child_ps_account_id')
+        .in('parent_ps_customer_id', customerIds)
+
+      // Combine parent and child account IDs
+      const allAccountIds = [
+        ...customerIds,
+        ...(childAccounts?.map((ca) => ca.child_ps_account_id) || [])
+      ]
+
       // Build query - using manual joins since foreign keys might not be set up
       let query = supabase
         .from('orders')
         .select('*')
-        .in('ps_customer_id', customerIds)
+        .in('ps_customer_id', allAccountIds)
 
       // Apply filters
       if (statusFilter.length > 0) {
@@ -85,13 +97,52 @@ export function useOrders({
       const orders = data || []
       const enrichedOrders: Order[] = []
 
+      // Fetch all issue counts in one efficient query
+      const orderIds = orders.map(order => order.id)
+      const { data: issueCounts } = await supabase
+        .from('order_issue_counts')
+        .select('order_id, invalid_items_count, price_issues_count')
+        .in('order_id', orderIds)
+
+      // Create a map for quick lookups
+      const issueCountMap = new Map(
+        issueCounts?.map(ic => [ic.order_id, ic]) || []
+      )
+
       for (const order of orders) {
-        // Fetch customer name
-        const { data: customer } = await supabase
+        // Fetch customer name - check if it's a parent or child account
+        let customer_name = order.customername || ''
+
+        // First try as parent customer
+        const { data: parentCustomer } = await supabase
           .from('customers')
           .select('customer_name')
           .eq('ps_customer_id', order.ps_customer_id)
-          .single()
+          .maybeSingle()
+
+        if (parentCustomer) {
+          customer_name = parentCustomer.customer_name
+        } else {
+          // If not found, check if it's a child account
+          const { data: childAccount } = await supabase
+            .from('customer_child_accounts')
+            .select('parent_ps_customer_id')
+            .eq('child_ps_account_id', order.ps_customer_id)
+            .maybeSingle()
+
+          if (childAccount) {
+            // Get parent customer name
+            const { data: parentCustomer } = await supabase
+              .from('customers')
+              .select('customer_name')
+              .eq('ps_customer_id', childAccount.parent_ps_customer_id)
+              .maybeSingle()
+
+            if (parentCustomer) {
+              customer_name = parentCustomer.customer_name
+            }
+          }
+        }
 
         // Fetch status name
         const { data: status } = await supabase
@@ -116,22 +167,24 @@ export function useOrders({
         // Fetch order lines with line totals for calculating order total
         const { data: lines } = await supabase
           .from('order_lines')
-          .select('id, cust_product_sku, cust_unit_price, cust_line_total')
+          .select('cust_line_total')
           .eq('cust_order_number', order.cust_order_number)
-
-        // Calculate price issues and invalid items (simplified for now)
-        const price_issues_count = 0 // Will be calculated in detail view
-        const invalid_items_count = 0 // Will be calculated in detail view
 
         // Calculate total order amount from line items
         const total_amount = lines?.reduce((sum, line) => sum + (line.cust_line_total || 0), 0) || 0
 
+        // Get issue counts from the view
+        const issueCounts = issueCountMap.get(order.id) || {
+          invalid_items_count: 0,
+          price_issues_count: 0
+        }
+
         enrichedOrders.push({
           ...order,
-          customer_name: customer?.customer_name || order.customername || '',
+          customer_name: customer_name,
           status_name: status?.status_name || '',
-          price_issues_count,
-          invalid_items_count,
+          price_issues_count: issueCounts.price_issues_count,
+          invalid_items_count: issueCounts.invalid_items_count,
           total_amount,
           csr_name,
         } as Order)

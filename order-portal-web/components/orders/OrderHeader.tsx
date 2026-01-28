@@ -6,7 +6,10 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Tables } from '@/lib/types/database'
 import { useRouter } from 'next/navigation'
-import { MapPin, Truck, FileText } from 'lucide-react'
+import { MapPin, Truck, FileText, RotateCcw, XCircle } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { usePDFHighlight } from '@/lib/contexts/PDFHighlightContext'
+import { assignPSOrderNumber } from '@/lib/utils/assignPSOrderNumber'
 
 // US States list
 const US_STATES = [
@@ -106,9 +109,34 @@ export function OrderHeader({
   const [notesExpanded, setNotesExpanded] = useState(false)
   const [headerExpanded, setHeaderExpanded] = useState(true)
   const [assignedCSR, setAssignedCSR] = useState<{ first_name: string; last_name: string } | null>(null)
+  const [customerDefaults, setCustomerDefaults] = useState<{
+    default_carrier: string | null
+    default_ship_via: string | null
+    default_shipto_name: string | null
+  }>({
+    default_carrier: null,
+    default_ship_via: null,
+    default_shipto_name: null,
+  })
+  const [hoveredDefault, setHoveredDefault] = useState<string | null>(null)
+  const [showErrorTooltip, setShowErrorTooltip] = useState(false)
+  const [errorTooltipPosition, setErrorTooltipPosition] = useState<{ x: number; y: number } | null>(null)
 
   const supabase = createClient()
   const router = useRouter()
+  const { isEnabled: isPDFHighlightEnabled, setHighlight, clearHighlight } = usePDFHighlight()
+
+  // Check for missing required fields in ship-to address and carrier section
+  const missingRequiredFields = []
+  if (!order.shipto_name) missingRequiredFields.push('Ship To Name')
+  if (!order.cust_shipto_address_line1) missingRequiredFields.push('Address Line 1')
+  if (!order.cust_shipto_city) missingRequiredFields.push('City')
+  if (!order.cust_shipto_state) missingRequiredFields.push('State')
+  if (!order.cust_shipto_postal_code) missingRequiredFields.push('Postal Code')
+  if (!order.cust_carrier) missingRequiredFields.push('Carrier')
+  if (!order.cust_ship_via) missingRequiredFields.push('Ship Via')
+
+  const hasMissingFields = missingRequiredFields.length > 0
 
   // Fetch distinct carriers when component mounts
   useEffect(() => {
@@ -155,6 +183,30 @@ export function OrderHeader({
     fetchAssignedCSR()
   }, [order.csr_id])
 
+  // Fetch customer default values
+  useEffect(() => {
+    const fetchCustomerDefaults = async () => {
+      if (!order.customers?.ps_customer_id) {
+        return
+      }
+
+      const { data } = await supabase
+        .from('customers')
+        .select('default_carrier, default_ship_via, default_shipto_name')
+        .eq('ps_customer_id', order.customers.ps_customer_id)
+        .single()
+
+      if (data) {
+        setCustomerDefaults({
+          default_carrier: data.default_carrier,
+          default_ship_via: data.default_ship_via,
+          default_shipto_name: data.default_shipto_name,
+        })
+      }
+    }
+    fetchCustomerDefaults()
+  }, [order.customers?.ps_customer_id])
+
   // Fetch ship via options when carrier changes
   useEffect(() => {
     const fetchShipViaOptions = async () => {
@@ -183,6 +235,63 @@ export function OrderHeader({
     }
     fetchShipViaOptions()
   }, [carrier])
+
+  // Apply default carrier
+  const handleApplyDefaultCarrier = async () => {
+    if (customerDefaults.default_carrier) {
+      setCarrier(customerDefaults.default_carrier)
+
+      // If not in edit mode, save immediately
+      if (!isEditing) {
+        const { error } = await supabase
+          .from('orders')
+          .update({ cust_carrier: customerDefaults.default_carrier })
+          .eq('id', order.id)
+
+        if (!error) {
+          router.refresh()
+        }
+      }
+    }
+  }
+
+  // Apply default ship via
+  const handleApplyDefaultShipVia = async () => {
+    if (customerDefaults.default_ship_via) {
+      setShipVia(customerDefaults.default_ship_via)
+
+      // If not in edit mode, save immediately
+      if (!isEditing) {
+        const { error } = await supabase
+          .from('orders')
+          .update({ cust_ship_via: customerDefaults.default_ship_via })
+          .eq('id', order.id)
+
+        if (!error) {
+          router.refresh()
+        }
+      }
+    }
+  }
+
+  // Apply default ship to name
+  const handleApplyDefaultShipToName = async () => {
+    if (customerDefaults.default_shipto_name) {
+      setShipToName(customerDefaults.default_shipto_name)
+
+      // If not in edit mode, save immediately
+      if (!isEditing) {
+        const { error } = await supabase
+          .from('orders')
+          .update({ shipto_name: customerDefaults.default_shipto_name })
+          .eq('id', order.id)
+
+        if (!error) {
+          router.refresh()
+        }
+      }
+    }
+  }
 
   // When entering edit mode, pre-populate fields that have values, leave blank fields empty
   const handleStartEdit = () => {
@@ -229,6 +338,25 @@ export function OrderHeader({
     if (error) {
       alert('Error saving changes: ' + error.message)
       return
+    }
+
+    // Assign PS Order Number if not already assigned
+    await assignPSOrderNumber(supabase, order.id)
+
+    // If order status is "Rev No Changes" (02), update it to "Rev With Changes" (03)
+    if (order.status_code === '02') {
+      await supabase
+        .from('orders')
+        .update({ status_code: '03' })
+        .eq('id', order.id)
+
+      // Log status change
+      await supabase.from('order_status_history').insert({
+        order_id: order.id,
+        status_code: '03',
+        changed_by: userId,
+        notes: 'Order header modified - status changed from Rev No Changes to Rev With Changes',
+      })
     }
 
     // Log changes to audit log
@@ -281,9 +409,78 @@ export function OrderHeader({
               <td style={{ fontWeight: 700, color: '#333F48', textAlign: 'right', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>Cust.</td>
               <td style={{ color: '#333F48', paddingRight: '24px', paddingBottom: '6px' }}>{order.customers?.customer_name || order.customername || 'N/A'}</td>
               <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>Cust Ord #</td>
-              <td style={{ color: '#333F48', paddingRight: '24px', paddingBottom: '6px' }}>{order.cust_order_number}</td>
+              <td
+                style={{
+                  color: '#333F48',
+                  paddingRight: '24px',
+                  paddingBottom: '6px',
+                  cursor: isPDFHighlightEnabled ? 'crosshair' : 'default',
+                  backgroundColor: 'transparent',
+                  transition: 'background-color 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (isPDFHighlightEnabled && order.cust_order_number) {
+                    setHighlight({
+                      fieldType: 'order_header',
+                      fieldName: 'cust_order_number',
+                      value: order.cust_order_number,
+                      context: 'Order Header'
+                    })
+                    e.currentTarget.style.backgroundColor = 'rgba(0, 163, 225, 0.1)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (isPDFHighlightEnabled) {
+                    clearHighlight()
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                  }
+                }}
+              >
+                {order.cust_order_number}
+              </td>
               <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>Order Date</td>
-              <td style={{ color: '#333F48', paddingRight: '24px', paddingBottom: '6px' }}>{order.cust_order_date ? format(parseISO(order.cust_order_date), 'MMM d, yyyy') : 'N/A'}</td>
+              <td
+                style={{
+                  color: '#333F48',
+                  paddingRight: '24px',
+                  paddingBottom: '6px',
+                  cursor: isPDFHighlightEnabled ? 'crosshair' : 'default',
+                  backgroundColor: 'transparent',
+                  transition: 'background-color 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (isPDFHighlightEnabled && order.cust_order_date) {
+                    try {
+                      // Get just the month/day/year parts to search for
+                      const parsedDate = parseISO(order.cust_order_date)
+                      const month = format(parsedDate, 'M')        // "1"
+                      const day = format(parsedDate, 'd')          // "15"
+                      const year = format(parsedDate, 'yyyy')      // "2024"
+
+                      // Search for a simple format that's most likely to match: M/d/yyyy
+                      const searchValue = `${month}/${day}/${year}`
+
+                      setHighlight({
+                        fieldType: 'order_header',
+                        fieldName: 'cust_order_date',
+                        value: searchValue,
+                        context: 'Order Header'
+                      })
+                      e.currentTarget.style.backgroundColor = 'rgba(0, 163, 225, 0.1)'
+                    } catch (err) {
+                      console.warn('[PDF] Could not parse date:', err)
+                    }
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (isPDFHighlightEnabled) {
+                    clearHighlight()
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                  }
+                }}
+              >
+                {order.cust_order_date ? format(parseISO(order.cust_order_date), 'MMM d, yyyy') : 'N/A'}
+              </td>
               <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', paddingBottom: '6px', whiteSpace: 'nowrap' }}>PS Order #</td>
               <td style={{
                 color: isImportSuccessful ? '#15803d' : '#333F48',
@@ -415,6 +612,62 @@ export function OrderHeader({
           <h3 className="font-bold uppercase tracking-widest text-[#333F48]" style={{ fontSize: '12px' }}>
             Ship-to Address & Carrier
           </h3>
+          {hasMissingFields && (
+            <span
+              className="inline-flex items-center cursor-help"
+              style={{ marginLeft: '8px', position: 'relative' }}
+              onMouseEnter={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect()
+                setErrorTooltipPosition({
+                  x: rect.left + rect.width / 2,
+                  y: rect.top
+                })
+                setShowErrorTooltip(true)
+              }}
+              onMouseLeave={() => {
+                setShowErrorTooltip(false)
+                setErrorTooltipPosition(null)
+              }}
+            >
+              <XCircle size={16} style={{ color: '#dc2626' }} />
+              {showErrorTooltip && errorTooltipPosition && typeof document !== 'undefined' && createPortal(
+                <div style={{
+                  position: 'fixed',
+                  left: `${errorTooltipPosition.x}px`,
+                  top: `${errorTooltipPosition.y - 10}px`,
+                  transform: 'translate(-50%, -100%)',
+                  backgroundColor: '#fee',
+                  border: '1px solid #dc2626',
+                  borderRadius: '6px',
+                  padding: '8px 10px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                  zIndex: 9999,
+                  minWidth: '200px',
+                  whiteSpace: 'nowrap'
+                }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#dc2626', marginBottom: '4px' }}>
+                    ⚠ Required Fields Missing
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#991b1b', lineHeight: '1.5' }}>
+                    {missingRequiredFields.join(', ')}
+                  </div>
+                  {/* Tooltip arrow */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '-6px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: '0',
+                    height: '0',
+                    borderLeft: '6px solid transparent',
+                    borderRight: '6px solid transparent',
+                    borderTop: '6px solid #dc2626'
+                  }} />
+                </div>,
+                document.body
+              )}
+            </span>
+          )}
           <span
             style={{
               fontSize: '16px',
@@ -451,46 +704,200 @@ export function OrderHeader({
                       paddingRight: '0.5rem',
                       whiteSpace: 'nowrap',
                       color: !order.shipto_name ? 'red' : '#333F48'
-                    }}>Ship To Name</td>
+                    }}>
+                      Ship To Name
+                      {isEditing && <span style={{ color: !order.shipto_name ? 'red' : '#00A3E1', marginLeft: '2px' }}>*</span>}
+                    </td>
                     <td style={{
                       paddingRight: isEditing ? '1.5rem' : 0,
-                      color: !order.shipto_name ? 'red' : '#333F48'
-                    }}>{order.shipto_name || '—'}</td>
+                      color: !order.shipto_name ? 'red' : '#333F48',
+                      position: 'relative',
+                      cursor: isPDFHighlightEnabled && !isEditing ? 'crosshair' : 'default',
+                      backgroundColor: 'transparent',
+                      transition: 'background-color 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (isPDFHighlightEnabled && !isEditing && order.shipto_name) {
+                        setHighlight({
+                          fieldType: 'shipto_address',
+                          fieldName: 'shipto_name',
+                          value: order.shipto_name,
+                          context: 'Ship To Address'
+                        })
+                        e.currentTarget.style.backgroundColor = 'rgba(0, 163, 225, 0.1)'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (isPDFHighlightEnabled && !isEditing) {
+                        clearHighlight()
+                        e.currentTarget.style.backgroundColor = 'transparent'
+                      }
+                    }}>
+                      {order.shipto_name || '—'}
+                      {!isEditing && customerDefaults.default_shipto_name && !order.shipto_name && (
+                        <button
+                          onClick={handleApplyDefaultShipToName}
+                          onMouseEnter={() => setHoveredDefault('shipToName')}
+                          onMouseLeave={() => setHoveredDefault(null)}
+                          style={{
+                            marginLeft: '8px',
+                            padding: '2px',
+                            border: 'none',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            color: '#00A3E1',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            position: 'relative'
+                          }}
+                        >
+                          <RotateCcw size={14} />
+                          {hoveredDefault === 'shipToName' && (
+                            <span style={{
+                              position: 'absolute',
+                              top: '-30px',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              backgroundColor: '#333',
+                              color: 'white',
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              whiteSpace: 'nowrap',
+                              zIndex: 1000
+                            }}>
+                              Apply Default: {customerDefaults.default_shipto_name}
+                            </span>
+                          )}
+                        </button>
+                      )}
+                    </td>
                     {isEditing && (
-                      <td>
+                      <td style={{ position: 'relative' }}>
                         <input
                           type="text"
                           value={shipToName}
                           onChange={(e) => setShipToName(e.target.value)}
-                          placeholder="Ship To Name"
+                          placeholder="Ship To Name (Required)"
                           className="w-full rounded-xl border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
                           style={{ minWidth: '180px' }}
                         />
+                        {customerDefaults.default_shipto_name && !shipToName && (
+                          <button
+                            onClick={handleApplyDefaultShipToName}
+                            onMouseEnter={() => setHoveredDefault('shipToName-edit')}
+                            onMouseLeave={() => setHoveredDefault(null)}
+                            style={{
+                              position: 'absolute',
+                              right: '-24px',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              padding: '2px',
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              color: '#00A3E1',
+                              display: 'inline-flex',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <RotateCcw size={14} />
+                            {hoveredDefault === 'shipToName-edit' && (
+                              <span style={{
+                                position: 'absolute',
+                                top: '-30px',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                backgroundColor: '#333',
+                                color: 'white',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                whiteSpace: 'nowrap',
+                                zIndex: 1000
+                              }}>
+                                Apply Default: {customerDefaults.default_shipto_name}
+                              </span>
+                            )}
+                          </button>
+                        )}
                       </td>
                     )}
                   </tr>
-                  {(isEditing || order.cust_shipto_address_line1) && (
-                    <tr>
-                      <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Addr Line 1</td>
-                      <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_address_line1 || '—'}</td>
+                  <tr>
+                    <td style={{
+                      fontWeight: 600,
+                      textAlign: 'right',
+                      paddingRight: '0.5rem',
+                      whiteSpace: 'nowrap',
+                      color: !order.cust_shipto_address_line1 ? 'red' : '#333F48'
+                    }}>
+                      Addr Line 1
+                      {isEditing && <span style={{ color: !order.cust_shipto_address_line1 ? 'red' : '#00A3E1', marginLeft: '2px' }}>*</span>}
+                    </td>
+                      <td style={{
+                        paddingRight: isEditing ? '1.5rem' : 0,
+                        color: !order.cust_shipto_address_line1 ? 'red' : '#333F48',
+                        cursor: isPDFHighlightEnabled && !isEditing ? 'crosshair' : 'default',
+                        backgroundColor: 'transparent',
+                        transition: 'background-color 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (isPDFHighlightEnabled && !isEditing && order.cust_shipto_address_line1) {
+                          setHighlight({
+                            fieldType: 'shipto_address',
+                            fieldName: 'cust_shipto_address_line1',
+                            value: order.cust_shipto_address_line1,
+                            context: 'Ship To Address'
+                          })
+                          e.currentTarget.style.backgroundColor = 'rgba(0, 163, 225, 0.1)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (isPDFHighlightEnabled && !isEditing) {
+                          clearHighlight()
+                          e.currentTarget.style.backgroundColor = 'transparent'
+                        }
+                      }}>{order.cust_shipto_address_line1 || '—'}</td>
                       {isEditing && (
                         <td>
                           <input
                             type="text"
                             value={address.line1}
                             onChange={(e) => setAddress({ ...address, line1: e.target.value })}
-                            placeholder="Address Line 1"
+                            placeholder="Address Line 1 (Required)"
                             className="w-full rounded-xl border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
                             style={{ minWidth: '180px' }}
                           />
                         </td>
                       )}
                     </tr>
-                  )}
                   {(isEditing || order.cust_shipto_address_line2) && (
                     <tr>
                       <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Addr Line 2</td>
-                      <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_address_line2 || '—'}</td>
+                      <td style={{
+                        paddingRight: isEditing ? '1.5rem' : 0,
+                        cursor: isPDFHighlightEnabled && !isEditing ? 'crosshair' : 'default',
+                        backgroundColor: 'transparent',
+                        transition: 'background-color 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (isPDFHighlightEnabled && !isEditing && order.cust_shipto_address_line2) {
+                          setHighlight({
+                            fieldType: 'shipto_address',
+                            fieldName: 'cust_shipto_address_line2',
+                            value: order.cust_shipto_address_line2,
+                            context: 'Ship To Address'
+                          })
+                          e.currentTarget.style.backgroundColor = 'rgba(0, 163, 225, 0.1)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (isPDFHighlightEnabled && !isEditing) {
+                          clearHighlight()
+                          e.currentTarget.style.backgroundColor = 'transparent'
+                        }
+                      }}>{order.cust_shipto_address_line2 || '—'}</td>
                       {isEditing && (
                         <td>
                           <input
@@ -508,7 +915,29 @@ export function OrderHeader({
                   {(isEditing || order.cust_shipto_address_line3) && (
                     <tr>
                       <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Addr Line 3</td>
-                      <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_address_line3 || '—'}</td>
+                      <td style={{
+                        paddingRight: isEditing ? '1.5rem' : 0,
+                        cursor: isPDFHighlightEnabled && !isEditing ? 'crosshair' : 'default',
+                        backgroundColor: 'transparent',
+                        transition: 'background-color 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (isPDFHighlightEnabled && !isEditing && order.cust_shipto_address_line3) {
+                          setHighlight({
+                            fieldType: 'shipto_address',
+                            fieldName: 'cust_shipto_address_line3',
+                            value: order.cust_shipto_address_line3,
+                            context: 'Ship To Address'
+                          })
+                          e.currentTarget.style.backgroundColor = 'rgba(0, 163, 225, 0.1)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (isPDFHighlightEnabled && !isEditing) {
+                          clearHighlight()
+                          e.currentTarget.style.backgroundColor = 'transparent'
+                        }
+                      }}>{order.cust_shipto_address_line3 || '—'}</td>
                       {isEditing && (
                         <td>
                           <input
@@ -523,28 +952,89 @@ export function OrderHeader({
                       )}
                     </tr>
                   )}
-                  {(isEditing || order.cust_shipto_city) && (
-                    <tr>
-                      <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>City</td>
-                      <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_city || '—'}</td>
+                  <tr>
+                      <td style={{
+                        fontWeight: 600,
+                        textAlign: 'right',
+                        paddingRight: '0.5rem',
+                        whiteSpace: 'nowrap',
+                        color: !order.cust_shipto_city ? 'red' : '#333F48'
+                      }}>
+                        City
+                        {isEditing && <span style={{ color: !order.cust_shipto_city ? 'red' : '#00A3E1', marginLeft: '2px' }}>*</span>}
+                      </td>
+                      <td style={{
+                        paddingRight: isEditing ? '1.5rem' : 0,
+                        color: !order.cust_shipto_city ? 'red' : '#333F48',
+                        cursor: isPDFHighlightEnabled && !isEditing ? 'crosshair' : 'default',
+                        backgroundColor: 'transparent',
+                        transition: 'background-color 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (isPDFHighlightEnabled && !isEditing && order.cust_shipto_city) {
+                          setHighlight({
+                            fieldType: 'shipto_address',
+                            fieldName: 'cust_shipto_city',
+                            value: order.cust_shipto_city,
+                            context: 'Ship To Address'
+                          })
+                          e.currentTarget.style.backgroundColor = 'rgba(0, 163, 225, 0.1)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (isPDFHighlightEnabled && !isEditing) {
+                          clearHighlight()
+                          e.currentTarget.style.backgroundColor = 'transparent'
+                        }
+                      }}>{order.cust_shipto_city || '—'}</td>
                       {isEditing && (
                         <td>
                           <input
                             type="text"
                             value={address.city}
                             onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                            placeholder="City"
+                            placeholder="City (Required)"
                             className="w-full rounded-xl border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
                             style={{ minWidth: '180px' }}
                           />
                         </td>
                       )}
                     </tr>
-                  )}
-                  {(isEditing || order.cust_shipto_state) && (
-                    <tr>
-                      <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>State</td>
-                      <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_state || '—'}</td>
+                  <tr>
+                      <td style={{
+                        fontWeight: 600,
+                        textAlign: 'right',
+                        paddingRight: '0.5rem',
+                        whiteSpace: 'nowrap',
+                        color: !order.cust_shipto_state ? 'red' : '#333F48'
+                      }}>
+                        State
+                        {isEditing && <span style={{ color: !order.cust_shipto_state ? 'red' : '#00A3E1', marginLeft: '2px' }}>*</span>}
+                      </td>
+                      <td style={{
+                        paddingRight: isEditing ? '1.5rem' : 0,
+                        color: !order.cust_shipto_state ? 'red' : '#333F48',
+                        cursor: isPDFHighlightEnabled && !isEditing ? 'crosshair' : 'default',
+                        backgroundColor: 'transparent',
+                        transition: 'background-color 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (isPDFHighlightEnabled && !isEditing && order.cust_shipto_state) {
+                          setHighlight({
+                            fieldType: 'shipto_address',
+                            fieldName: 'cust_shipto_state',
+                            value: order.cust_shipto_state,
+                            context: 'Ship To Address'
+                          })
+                          e.currentTarget.style.backgroundColor = 'rgba(0, 163, 225, 0.1)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (isPDFHighlightEnabled && !isEditing) {
+                          clearHighlight()
+                          e.currentTarget.style.backgroundColor = 'transparent'
+                        }
+                      }}>{order.cust_shipto_state || '—'}</td>
                       {isEditing && (
                         <td>
                           {isUSA(address.country) || isUSA(order.cust_shipto_country) ? (
@@ -554,7 +1044,7 @@ export function OrderHeader({
                               className="w-full rounded-xl border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
                               style={{ minWidth: '180px' }}
                             >
-                              <option value="">Select State</option>
+                              <option value="">Select State (Required)</option>
                               {US_STATES.map((state) => (
                                 <option key={state.code} value={state.code}>
                                   {state.code} - {state.name}
@@ -566,7 +1056,7 @@ export function OrderHeader({
                               type="text"
                               value={address.state}
                               onChange={(e) => setAddress({ ...address, state: e.target.value })}
-                              placeholder="State/Province"
+                              placeholder="State/Province (Required)"
                               className="w-full rounded-xl border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
                               style={{ minWidth: '180px' }}
                             />
@@ -574,25 +1064,54 @@ export function OrderHeader({
                         </td>
                       )}
                     </tr>
-                  )}
-                  {(isEditing || order.cust_shipto_postal_code) && (
-                    <tr>
-                      <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Postal</td>
-                      <td style={{ paddingRight: isEditing ? '1.5rem' : 0 }}>{order.cust_shipto_postal_code || '—'}</td>
+                  <tr>
+                      <td style={{
+                        fontWeight: 600,
+                        textAlign: 'right',
+                        paddingRight: '0.5rem',
+                        whiteSpace: 'nowrap',
+                        color: !order.cust_shipto_postal_code ? 'red' : '#333F48'
+                      }}>
+                        Postal
+                        {isEditing && <span style={{ color: !order.cust_shipto_postal_code ? 'red' : '#00A3E1', marginLeft: '2px' }}>*</span>}
+                      </td>
+                      <td style={{
+                        paddingRight: isEditing ? '1.5rem' : 0,
+                        color: !order.cust_shipto_postal_code ? 'red' : '#333F48',
+                        cursor: isPDFHighlightEnabled && !isEditing ? 'crosshair' : 'default',
+                        backgroundColor: 'transparent',
+                        transition: 'background-color 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (isPDFHighlightEnabled && !isEditing && order.cust_shipto_postal_code) {
+                          setHighlight({
+                            fieldType: 'shipto_address',
+                            fieldName: 'cust_shipto_postal_code',
+                            value: order.cust_shipto_postal_code,
+                            context: 'Ship To Address'
+                          })
+                          e.currentTarget.style.backgroundColor = 'rgba(0, 163, 225, 0.1)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (isPDFHighlightEnabled && !isEditing) {
+                          clearHighlight()
+                          e.currentTarget.style.backgroundColor = 'transparent'
+                        }
+                      }}>{order.cust_shipto_postal_code || '—'}</td>
                       {isEditing && (
                         <td>
                           <input
                             type="text"
                             value={address.postal}
                             onChange={(e) => setAddress({ ...address, postal: e.target.value })}
-                            placeholder="Postal Code"
+                            placeholder="Postal Code (Required)"
                             className="w-full rounded-xl border border-input bg-background px-2 py-1 text-sm text-foreground focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]/20"
                             style={{ minWidth: '180px' }}
                           />
                         </td>
                       )}
                     </tr>
-                  )}
                   {(isEditing || order.cust_shipto_country) && (
                     <tr>
                       <td style={{ fontWeight: 600, textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>Country</td>
@@ -631,13 +1150,56 @@ export function OrderHeader({
                       paddingRight: '0.5rem',
                       whiteSpace: 'nowrap',
                       color: !order.cust_carrier ? 'red' : '#333F48'
-                    }}>Carrier</td>
+                    }}>
+                      Carrier
+                      {isEditing && <span style={{ color: !order.cust_carrier ? 'red' : '#00A3E1', marginLeft: '2px' }}>*</span>}
+                    </td>
                     <td style={{
                       paddingRight: isEditing ? '1.5rem' : 0,
-                      color: !order.cust_carrier ? 'red' : '#333F48'
-                    }}>{order.cust_carrier || '—'}</td>
+                      color: !order.cust_carrier ? 'red' : '#333F48',
+                      position: 'relative'
+                    }}>
+                      {order.cust_carrier || '—'}
+                      {!isEditing && customerDefaults.default_carrier && !order.cust_carrier && (
+                        <button
+                          onClick={handleApplyDefaultCarrier}
+                          onMouseEnter={() => setHoveredDefault('carrier')}
+                          onMouseLeave={() => setHoveredDefault(null)}
+                          style={{
+                            marginLeft: '8px',
+                            padding: '2px',
+                            border: 'none',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            color: '#00A3E1',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            position: 'relative'
+                          }}
+                        >
+                          <RotateCcw size={14} />
+                          {hoveredDefault === 'carrier' && (
+                            <span style={{
+                              position: 'absolute',
+                              top: '-30px',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              backgroundColor: '#333',
+                              color: 'white',
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              whiteSpace: 'nowrap',
+                              zIndex: 1000
+                            }}>
+                              Apply Default: {customerDefaults.default_carrier}
+                            </span>
+                          )}
+                        </button>
+                      )}
+                    </td>
                     {isEditing && (
-                      <td>
+                      <td style={{ position: 'relative' }}>
                         <select
                           value={carrier}
                           onChange={(e) => setCarrier(e.target.value)}
@@ -651,6 +1213,45 @@ export function OrderHeader({
                             </option>
                           ))}
                         </select>
+                        {customerDefaults.default_carrier && !carrier && (
+                          <button
+                            onClick={handleApplyDefaultCarrier}
+                            onMouseEnter={() => setHoveredDefault('carrier-edit')}
+                            onMouseLeave={() => setHoveredDefault(null)}
+                            style={{
+                              position: 'absolute',
+                              right: '-24px',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              padding: '2px',
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              color: '#00A3E1',
+                              display: 'inline-flex',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <RotateCcw size={14} />
+                            {hoveredDefault === 'carrier-edit' && (
+                              <span style={{
+                                position: 'absolute',
+                                top: '-30px',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                backgroundColor: '#333',
+                                color: 'white',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                whiteSpace: 'nowrap',
+                                zIndex: 1000
+                              }}>
+                                Apply Default: {customerDefaults.default_carrier}
+                              </span>
+                            )}
+                          </button>
+                        )}
                       </td>
                     )}
                   </tr>
@@ -661,13 +1262,56 @@ export function OrderHeader({
                       paddingRight: '0.5rem',
                       whiteSpace: 'nowrap',
                       color: !order.cust_ship_via ? 'red' : '#333F48'
-                    }}>Ship Via</td>
+                    }}>
+                      Ship Via
+                      {isEditing && <span style={{ color: !order.cust_ship_via ? 'red' : '#00A3E1', marginLeft: '2px' }}>*</span>}
+                    </td>
                     <td style={{
                       paddingRight: isEditing ? '1.5rem' : 0,
-                      color: !order.cust_ship_via ? 'red' : '#333F48'
-                    }}>{order.cust_ship_via || '—'}</td>
+                      color: !order.cust_ship_via ? 'red' : '#333F48',
+                      position: 'relative'
+                    }}>
+                      {order.cust_ship_via || '—'}
+                      {!isEditing && customerDefaults.default_ship_via && !order.cust_ship_via && (
+                        <button
+                          onClick={handleApplyDefaultShipVia}
+                          onMouseEnter={() => setHoveredDefault('shipVia')}
+                          onMouseLeave={() => setHoveredDefault(null)}
+                          style={{
+                            marginLeft: '8px',
+                            padding: '2px',
+                            border: 'none',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            color: '#00A3E1',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            position: 'relative'
+                          }}
+                        >
+                          <RotateCcw size={14} />
+                          {hoveredDefault === 'shipVia' && (
+                            <span style={{
+                              position: 'absolute',
+                              top: '-30px',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              backgroundColor: '#333',
+                              color: 'white',
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              whiteSpace: 'nowrap',
+                              zIndex: 1000
+                            }}>
+                              Apply Default: {customerDefaults.default_ship_via}
+                            </span>
+                          )}
+                        </button>
+                      )}
+                    </td>
                     {isEditing && (
-                      <td>
+                      <td style={{ position: 'relative' }}>
                         <select
                           value={shipVia}
                           onChange={(e) => setShipVia(e.target.value)}
@@ -682,6 +1326,45 @@ export function OrderHeader({
                             </option>
                           ))}
                         </select>
+                        {customerDefaults.default_ship_via && !shipVia && (
+                          <button
+                            onClick={handleApplyDefaultShipVia}
+                            onMouseEnter={() => setHoveredDefault('shipVia-edit')}
+                            onMouseLeave={() => setHoveredDefault(null)}
+                            style={{
+                              position: 'absolute',
+                              right: '-24px',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              padding: '2px',
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              color: '#00A3E1',
+                              display: 'inline-flex',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <RotateCcw size={14} />
+                            {hoveredDefault === 'shipVia-edit' && (
+                              <span style={{
+                                position: 'absolute',
+                                top: '-30px',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                backgroundColor: '#333',
+                                color: 'white',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                whiteSpace: 'nowrap',
+                                zIndex: 1000
+                              }}>
+                                Apply Default: {customerDefaults.default_ship_via}
+                              </span>
+                            )}
+                          </button>
+                        )}
                       </td>
                     )}
                   </tr>

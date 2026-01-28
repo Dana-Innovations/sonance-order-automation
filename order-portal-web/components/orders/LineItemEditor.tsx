@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Tables } from '@/lib/types/database'
 import { ProductLookupModal } from './ProductLookupModal'
 import { Search } from 'lucide-react'
+import { assignPSOrderNumber } from '@/lib/utils/assignPSOrderNumber'
 
 type OrderLine = Tables<'order_lines'>
 
@@ -232,6 +233,9 @@ export function LineItemEditor({
         reason: (change as any).reason || (change.field_name === 'sonance_unit_price' ? 'Sonance price correction' : undefined),
       })
     }
+
+    // Assign PS Order Number if not already assigned
+    await assignPSOrderNumber(supabase, orderId)
 
     // If order status is "Rev No Changes" (02), update it to "Rev With Changes" (03)
     const { data: orderData } = await supabase
