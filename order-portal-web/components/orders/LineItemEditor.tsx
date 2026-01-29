@@ -107,14 +107,16 @@ export function LineItemEditor({
 
     setIsSaving(true)
 
-    // If the Sonance Item SKU changed, look up the new price and UOM from customer_product_pricing
+    // If the Sonance Item SKU or UOM changed, look up the new price from customer_product_pricing
     const sonanceSkuChanged = line.sonance_prod_sku !== formData.sonanceItem
+    const uomChanged = line.sonance_uom !== formData.uom
     let lookedUpPrice: number | null = null
     let lookedUpUom: string | null = null
-    
-    if (sonanceSkuChanged && formData.sonanceItem && psCustomerId) {
+
+    // Perform price lookup if either SKU or UOM changed
+    if ((sonanceSkuChanged || uomChanged) && formData.sonanceItem && formData.uom && psCustomerId) {
       const uomToLookup = formData.uom || 'EA'
-      
+
       // First try exact match with UOM
       let { data: pricing, error } = await supabase
         .from('customer_product_pricing')
@@ -123,7 +125,7 @@ export function LineItemEditor({
         .eq('product_id', formData.sonanceItem)
         .eq('uom', uomToLookup)
         .maybeSingle()
-      
+
       // If no exact match, try without UOM filter to find the default price/UOM for this product
       if (!pricing && !error) {
         const { data: fallbackPricing } = await supabase
@@ -133,16 +135,16 @@ export function LineItemEditor({
           .eq('product_id', formData.sonanceItem)
           .limit(1)
           .maybeSingle()
-        
+
         pricing = fallbackPricing
       }
-      
+
       if (pricing?.dfi_price != null) {
         lookedUpPrice = pricing.dfi_price
         unitPrice = pricing.dfi_price
       }
-      
-      // Always use the UOM from the pricing table when product changes
+
+      // Always use the UOM from the pricing table when product or UOM changes
       if (pricing?.uom) {
         lookedUpUom = pricing.uom
         console.log(`Lookup success: Product ${formData.sonanceItem}, UOM ${pricing.uom}, Price ${pricing.dfi_price}`)

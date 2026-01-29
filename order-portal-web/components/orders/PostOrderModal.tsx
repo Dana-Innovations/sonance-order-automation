@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { generateOrderXML } from '@/lib/xml/orderXMLBuilder'
 import { Tables } from '@/lib/types/database'
 import { CheckCircle, XCircle, Loader2, Download, AlertTriangle } from 'lucide-react'
@@ -18,7 +19,25 @@ interface ValidationResult {
   warnings: string[]
 }
 
-function validateOrderForPost(order: Order): ValidationResult {
+interface ProductValidationResult {
+  lineId: string
+  lineNumber: number
+  sku: string
+  uom: string
+  isValid: boolean
+  hasProduct: boolean
+  hasMatchingUom: boolean
+}
+
+interface PriceMismatch {
+  lineNumber: number
+  productSku: string
+  custPrice: number
+  sonancePrice: number
+  variance: number
+}
+
+function validateOrderForPost(order: Order, productValidation?: ProductValidationResult[]): ValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
 
@@ -32,8 +51,24 @@ function validateOrderForPost(order: Order): ValidationResult {
   }
 
   // Ship-to address validation
-  if (!order.cust_shipto_address_line1 || !order.cust_shipto_city || !order.cust_shipto_state) {
-    errors.push('Complete ship-to address is required (Address Line 1, City, State)')
+  if (!order.shipto_name) {
+    errors.push('Ship-to Name is required')
+  }
+
+  if (!order.cust_shipto_address_line1) {
+    errors.push('Ship-to Address Line 1 is required')
+  }
+
+  if (!order.cust_shipto_city) {
+    errors.push('Ship-to City is required')
+  }
+
+  if (!order.cust_shipto_state) {
+    errors.push('Ship-to State is required')
+  }
+
+  if (!order.cust_shipto_postal_code) {
+    errors.push('Ship-to Postal Code is required')
   }
 
   // Carrier and Ship Via validation
@@ -78,6 +113,19 @@ function validateOrderForPost(order: Order): ValidationResult {
     }
   })
 
+  // Validate products against customer_product_pricing
+  if (productValidation) {
+    productValidation.forEach((pv) => {
+      if (!pv.isValid) {
+        if (!pv.hasProduct) {
+          errors.push(`Line ${pv.lineNumber}: Product "${pv.sku}" is not valid for this customer (not found in customer pricing)`)
+        } else if (!pv.hasMatchingUom) {
+          errors.push(`Line ${pv.lineNumber}: UOM "${pv.uom}" does not match customer pricing for product "${pv.sku}"`)
+        }
+      }
+    })
+  }
+
   return {
     valid: errors.length === 0,
     errors,
@@ -103,7 +151,117 @@ export function PostOrderModal({
   const supabase = createClient()
   const router = useRouter()
 
-  const validation = validateOrderForPost(order)
+  // Validate products against customer_product_pricing
+  // Include line SKUs and UOMs in cache key so it recalculates when lines change
+  const lineSkuUomKey = order.order_lines
+    ?.map(l => `${l.id}:${l.sonance_prod_sku || l.cust_product_sku}:${l.sonance_uom}:${l.line_status}`)
+    .join(',') || ''
+
+  const { data: productValidation, isLoading: isValidating } = useQuery({
+    queryKey: ['order-product-validation', order.id, order.ps_customer_id, lineSkuUomKey],
+    queryFn: async (): Promise<ProductValidationResult[]> => {
+      const activeLines = order.order_lines?.filter(line => line.line_status !== 'cancelled') || []
+      const results: ProductValidationResult[] = []
+
+      for (const line of activeLines) {
+        // Use validated_sku first, then fall back to sonance_prod_sku
+        const productSku = line.validated_sku || line.sonance_prod_sku || line.cust_product_sku
+        const uom = line.sonance_uom || 'EA'
+
+        if (!productSku) {
+          results.push({
+            lineId: line.id,
+            lineNumber: line.cust_line_number,
+            sku: '',
+            uom: uom,
+            isValid: false,
+            hasProduct: false,
+            hasMatchingUom: false,
+          })
+          continue
+        }
+
+        // Check if product exists in customer_product_pricing for this customer
+        const { data: pricing } = await supabase
+          .from('customer_product_pricing')
+          .select('product_id, uom')
+          .eq('ps_customer_id', order.ps_customer_id || '')
+          .eq('product_id', productSku)
+
+        if (!pricing || pricing.length === 0) {
+          // Product not found for this customer
+          results.push({
+            lineId: line.id,
+            lineNumber: line.cust_line_number,
+            sku: productSku,
+            uom: uom,
+            isValid: false,
+            hasProduct: false,
+            hasMatchingUom: false,
+          })
+          continue
+        }
+
+        // Check if any of the pricing records have matching UOM
+        const hasMatchingUom = pricing.some(p => p.uom === uom)
+
+        results.push({
+          lineId: line.id,
+          lineNumber: line.cust_line_number,
+          sku: productSku,
+          uom: uom,
+          isValid: hasMatchingUom,
+          hasProduct: true,
+          hasMatchingUom: hasMatchingUom,
+        })
+      }
+
+      return results
+    },
+    enabled: !!order.ps_customer_id,
+  })
+
+  // Calculate price mismatches for warning display
+  // Include line prices in cache key so it recalculates when lines change
+  const lineDataKey = order.order_lines
+    ?.map(l => `${l.id}:${l.cust_unit_price}:${l.sonance_unit_price}:${l.line_status}`)
+    .join(',') || ''
+
+  const { data: priceMismatches } = useQuery({
+    queryKey: ['order-price-mismatches', order.id, order.ps_customer_id, lineDataKey],
+    queryFn: async (): Promise<PriceMismatch[]> => {
+      const activeLines = order.order_lines?.filter(line => line.line_status !== 'cancelled') || []
+      const mismatches: PriceMismatch[] = []
+
+      for (const line of activeLines) {
+        const productSku = line.validated_sku || line.sonance_prod_sku || line.cust_product_sku
+        const custPrice = line.cust_unit_price
+        const sonancePrice = line.sonance_unit_price
+
+        // Skip if no product SKU or prices are missing
+        if (!productSku || custPrice == null || sonancePrice == null) continue
+
+        // Compare customer PO price vs the actual Sonance price that will be sent to PeopleSoft
+        const variance = ((sonancePrice - custPrice) / custPrice) * 100
+
+        // Only add if there's a price difference (more than 1 cent)
+        if (Math.abs(variance) >= 0.01) {
+          mismatches.push({
+            lineNumber: line.cust_line_number,
+            productSku: productSku,
+            custPrice: custPrice,
+            sonancePrice: sonancePrice,
+            variance: variance
+          })
+        }
+      }
+
+      return mismatches
+    },
+    enabled: !!order.ps_customer_id,
+  })
+
+  const validation = validateOrderForPost(order, productValidation)
 
   const handlePostOrder = async () => {
     if (!validation.valid || !confirmed) return
@@ -117,7 +275,11 @@ export function PostOrderModal({
       setXmlContent(xml)
 
       // Step 2: Save product mappings for ML learning
-      const activeLines = order.order_lines?.filter(line => line.line_status !== 'cancelled') || []
+      // Exclude cancelled lines and manually added lines
+      const activeLines = order.order_lines?.filter(line =>
+        line.line_status !== 'cancelled' &&
+        line.validation_source !== 'manual_add'
+      ) || []
       let mappingsCount = 0
 
       for (const line of activeLines) {
@@ -132,6 +294,7 @@ export function PostOrderModal({
             p_cust_product_desc: line.cust_line_desc || null,
             p_sonance_product_sku: sonanceSku,
             p_created_by_order_id: order.id,
+            p_cust_order_number: order.cust_order_number,
           })
 
           // If RPC doesn't exist, fall back to regular upsert
@@ -154,6 +317,7 @@ export function PostOrderModal({
                   times_used: (existingMapping.times_used || 1) + 1,
                   last_used_at: new Date().toISOString(),
                   confidence_score: 1.00, // User confirmed
+                  cust_order_number: order.cust_order_number,
                 })
                 .eq('id', existingMapping.id)
             } else {
@@ -168,6 +332,7 @@ export function PostOrderModal({
                   confidence_score: 1.00,
                   times_used: 1,
                   created_by_order_id: order.id,
+                  cust_order_number: order.cust_order_number,
                 })
             }
           }
@@ -177,11 +342,11 @@ export function PostOrderModal({
       }
       setMappingsSaved(mappingsCount)
 
-      // Step 3: Update order status to Upload Successful (05)
+      // Step 3: Update order status to Upload in Process (04)
       const { error: updateError } = await supabase
         .from('orders')
         .update({
-          status_code: '05',
+          status_code: '04',
           exported_at: new Date().toISOString(),
           exported_by: userId,
         })
@@ -192,9 +357,9 @@ export function PostOrderModal({
       // Step 4: Create status history entry
       await supabase.from('order_status_history').insert({
         order_id: order.id,
-        status_code: '05',
+        status_code: '04',
         changed_by: userId,
-        notes: `Order posted and exported to XML. ${mappingsCount} product mappings saved.`,
+        notes: `Order posted and exported to XML. ${mappingsCount} product mappings saved. Waiting for PeopleSoft order number.`,
       })
 
       // Step 5: Log to audit log
@@ -203,8 +368,8 @@ export function PostOrderModal({
         user_id: userId,
         action_type: 'order_posted',
         old_value: order.status_code,
-        new_value: '05',
-        reason: `Order posted to PeopleSoft. ${mappingsCount} product mappings saved for ML learning.`,
+        new_value: '04',
+        reason: `Order posted to PeopleSoft (Upload in Process). ${mappingsCount} product mappings saved for ML learning. Status will update to Upload Successful once PS order number is received.`,
       })
 
       setStep('success')
@@ -237,32 +402,48 @@ export function PostOrderModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-2xl max-h-[90vh] rounded-lg border border-gray-200 bg-white shadow-lg flex flex-col">
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+      <div className="rounded-lg shadow-lg flex flex-col" style={{ width: '525px', maxWidth: '90vw', maxHeight: '80vh', backgroundColor: 'white', border: '1px solid #00A3E1', position: 'relative', top: '-5vh' }}>
         {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-[#333F48]">
+        <div className="border-b border-gray-300" style={{ backgroundColor: 'white', paddingTop: '20px', paddingBottom: '20px', paddingLeft: '32px', paddingRight: '32px' }}>
+          <h2 className="font-semibold" style={{ color: '#666', fontSize: '13px', marginBottom: '4px' }}>
             Post Order to PeopleSoft
           </h2>
-          <p className="text-sm text-[#6b7a85] mt-1">
+          <p style={{ fontSize: '10px', color: '#999', marginTop: '4px' }}>
             Order #{order.cust_order_number} • {order.customers?.customer_name || order.customername}
           </p>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto" style={{ paddingTop: '8px', paddingBottom: '32px', paddingLeft: '32px', paddingRight: '32px' }}>
           {step === 'validate' && (
             <>
               {/* Validation Checklist */}
               <div className="space-y-3 mb-6">
-                <h3 className="text-sm font-medium text-[#333F48] uppercase tracking-wider">
+                <h3 className="font-medium text-[#333F48] uppercase tracking-wider" style={{ fontSize: '13px' }}>
                   Validation Checklist
                 </h3>
                 
                 <div className="space-y-2">
                   <ValidationItem
-                    passed={!!order.cust_shipto_address_line1 && !!order.cust_shipto_city && !!order.cust_shipto_state}
-                    label="Ship-to address complete"
+                    passed={!!order.shipto_name}
+                    label="Ship-to Name provided"
+                  />
+                  <ValidationItem
+                    passed={!!order.cust_shipto_address_line1}
+                    label="Ship-to Address Line 1 provided"
+                  />
+                  <ValidationItem
+                    passed={!!order.cust_shipto_city}
+                    label="Ship-to City provided"
+                  />
+                  <ValidationItem
+                    passed={!!order.cust_shipto_state}
+                    label="Ship-to State provided"
+                  />
+                  <ValidationItem
+                    passed={!!order.cust_shipto_postal_code}
+                    label="Ship-to Postal Code provided"
                   />
                   <ValidationItem
                     passed={!!order.cust_carrier}
@@ -280,17 +461,22 @@ export function PostOrderModal({
                     passed={order.order_lines?.filter(l => l.line_status !== 'cancelled').every(l => l.sonance_prod_sku || l.cust_product_sku) || false}
                     label="All line items have Sonance product SKU"
                   />
+                  <ValidationItem
+                    passed={!isValidating && productValidation?.every(pv => pv.isValid) || false}
+                    label="All products valid for customer with matching UOM"
+                    isLoading={isValidating}
+                  />
                 </div>
               </div>
 
               {/* Errors */}
               {validation.errors.length > 0 && (
-                <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-4">
-                  <h3 className="text-sm font-medium text-red-800 mb-2 flex items-center gap-2">
-                    <XCircle className="h-4 w-4" />
-                    Validation Errors
+                <div className="mb-4 rounded-md p-4" style={{ backgroundColor: '#fee', border: '2px solid #dc2626' }}>
+                  <h3 className="font-bold mb-3 flex items-center gap-2" style={{ fontSize: '14px', color: '#dc2626' }}>
+                    <XCircle className="h-5 w-5" style={{ color: '#dc2626' }} />
+                    Validation Errors - Cannot Post Order
                   </h3>
-                  <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
+                  <ul className="list-disc list-inside space-y-2" style={{ fontSize: '13px', color: '#b91c1c', fontWeight: '500', paddingLeft: '8px' }}>
                     {validation.errors.map((error, index) => (
                       <li key={index}>{error}</li>
                     ))}
@@ -301,13 +487,36 @@ export function PostOrderModal({
               {/* Warnings */}
               {validation.warnings.length > 0 && (
                 <div className="mb-4 rounded-md bg-amber-50 border border-amber-200 p-4">
-                  <h3 className="text-sm font-medium text-amber-800 mb-2 flex items-center gap-2">
+                  <h3 className="font-medium text-amber-800 mb-2 flex items-center gap-2" style={{ fontSize: '13px' }}>
                     <AlertTriangle className="h-4 w-4" />
                     Notices
                   </h3>
-                  <ul className="list-disc list-inside text-sm text-amber-700 space-y-1">
+                  <ul className="list-disc list-inside text-amber-700 space-y-1" style={{ fontSize: '13px' }}>
                     {validation.warnings.map((warning, index) => (
                       <li key={index}>{warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Price Mismatches */}
+              {priceMismatches && priceMismatches.length > 0 && (
+                <div className="mb-4 rounded-md bg-amber-50 border border-amber-200 p-4">
+                  <h3 className="font-medium text-amber-800 mb-2 flex items-center gap-2" style={{ fontSize: '13px' }}>
+                    <AlertTriangle className="h-4 w-4" />
+                    Price Mismatches ({priceMismatches.length} line{priceMismatches.length > 1 ? 's' : ''})
+                  </h3>
+                  <p className="text-amber-700 mb-2" style={{ fontSize: '12px' }}>
+                    The following items have different prices than your customer pricing table.
+                  </p>
+                  <ul className="list-disc list-inside text-amber-700 space-y-1" style={{ fontSize: '12px' }}>
+                    {priceMismatches.map((mismatch, index) => (
+                      <li key={index}>
+                        Line {mismatch.lineNumber} ({mismatch.productSku}):
+                        {' '}PO ${mismatch.custPrice.toFixed(2)} vs
+                        {' '}Pricing ${mismatch.sonancePrice.toFixed(2)}
+                        {' '}({mismatch.variance > 0 ? '+' : ''}{mismatch.variance.toFixed(1)}%)
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -323,9 +532,8 @@ export function PostOrderModal({
                       onChange={(e) => setConfirmed(e.target.checked)}
                       className="mt-1 rounded border-gray-300"
                     />
-                    <span className="text-sm text-[#333F48]">
-                      I confirm this order is ready to be posted to PeopleSoft. 
-                      Product mappings will be saved for future order processing.
+                    <span className="text-[#333F48]" style={{ fontSize: '13px' }}>
+                      I confirm this order is ready to be posted to PeopleSoft.
                     </span>
                   </label>
                 </div>
@@ -336,8 +544,8 @@ export function PostOrderModal({
           {step === 'processing' && (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="h-12 w-12 text-[#00A3E1] animate-spin mb-4" />
-              <p className="text-lg font-medium text-[#333F48]">Processing Order...</p>
-              <p className="text-sm text-[#6b7a85] mt-2">
+              <p className="font-medium text-[#333F48]" style={{ fontSize: '17px' }}>Processing Order...</p>
+              <p className="text-[#6b7a85] mt-2" style={{ fontSize: '13px' }}>
                 Generating XML and saving product mappings
               </p>
             </div>
@@ -348,10 +556,10 @@ export function PostOrderModal({
               <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
                 <CheckCircle className="h-10 w-10 text-green-600" />
               </div>
-              <h3 className="text-lg font-semibold text-[#333F48] mb-2">
+              <h3 className="font-semibold text-[#333F48] mb-2" style={{ fontSize: '17px' }}>
                 Order Posted Successfully!
               </h3>
-              <p className="text-sm text-[#6b7a85] text-center mb-6">
+              <p className="text-[#6b7a85] text-center mb-6" style={{ fontSize: '13px' }}>
                 Order #{order.cust_order_number} has been posted to PeopleSoft.
                 <br />
                 {mappingsSaved} product mapping{mappingsSaved !== 1 ? 's' : ''} saved for ML learning.
@@ -374,10 +582,10 @@ export function PostOrderModal({
               <div className="h-16 w-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
                 <XCircle className="h-10 w-10 text-red-600" />
               </div>
-              <h3 className="text-lg font-semibold text-[#333F48] mb-2">
+              <h3 className="font-semibold text-[#333F48] mb-2" style={{ fontSize: '17px' }}>
                 Error Posting Order
               </h3>
-              <p className="text-sm text-red-600 text-center">
+              <p className="text-red-600 text-center" style={{ fontSize: '13px' }}>
                 {errorMessage}
               </p>
             </div>
@@ -385,19 +593,61 @@ export function PostOrderModal({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 flex gap-3 justify-end">
+        <div className="border-t border-gray-300 flex justify-center gap-3" style={{ backgroundColor: 'white', paddingTop: '20px', paddingBottom: '20px' }}>
           <button
             onClick={handleClose}
-            className="px-4 py-2 bg-gray-100 text-[#333F48] rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+            className="font-medium transition-colors"
+            style={{
+              border: '1px solid #00A3E1',
+              borderRadius: '20px',
+              backgroundColor: 'white',
+              color: '#00A3E1',
+              paddingLeft: '20px',
+              paddingRight: '20px',
+              paddingTop: '6px',
+              paddingBottom: '6px',
+              fontSize: '9px',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#00A3E1'
+              e.currentTarget.style.color = 'white'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'white'
+              e.currentTarget.style.color = '#00A3E1'
+            }}
           >
             {step === 'success' ? 'Close' : 'Cancel'}
           </button>
-          
+
           {step === 'validate' && (
             <button
               onClick={handlePostOrder}
-              disabled={!validation.valid || !confirmed || isProcessing}
-              className="px-4 py-2 bg-[#00A3E1] text-white rounded-md text-sm font-medium hover:bg-[#008bc4] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              disabled={!validation.valid || !confirmed || isProcessing || isValidating}
+              className="font-medium transition-colors"
+              style={{
+                border: '1px solid #00A3E1',
+                borderRadius: '20px',
+                backgroundColor: !validation.valid || !confirmed || isProcessing || isValidating ? '#ccc' : '#00A3E1',
+                color: 'white',
+                paddingLeft: '20px',
+                paddingRight: '20px',
+                paddingTop: '6px',
+                paddingBottom: '6px',
+                fontSize: '9px',
+                cursor: !validation.valid || !confirmed || isProcessing || isValidating ? 'not-allowed' : 'pointer',
+                opacity: !validation.valid || !confirmed || isProcessing || isValidating ? 0.5 : 1,
+              }}
+              onMouseEnter={(e) => {
+                if (!(!validation.valid || !confirmed || isProcessing || isValidating)) {
+                  e.currentTarget.style.backgroundColor = '#008bc4'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!(!validation.valid || !confirmed || isProcessing || isValidating)) {
+                  e.currentTarget.style.backgroundColor = '#00A3E1'
+                }
+              }}
             >
               Post Order
             </button>
@@ -408,19 +658,30 @@ export function PostOrderModal({
   )
 }
 
-function ValidationItem({ passed, label }: { passed: boolean; label: string }) {
+function ValidationItem({ passed, label, isLoading }: { passed: boolean; label: string; isLoading?: boolean }) {
   return (
-    <div className="flex items-center gap-2">
-      {passed ? (
-        <CheckCircle className="h-5 w-5 text-green-600" />
+    <div className="flex items-center" style={{ gap: '16px' }}>
+      {isLoading ? (
+        <Loader2 className="text-[#00A3E1] animate-spin" style={{ width: '17px', height: '17px' }} />
+      ) : passed ? (
+        <CheckCircle style={{ width: '17px', height: '17px', color: '#16a34a' }} />
       ) : (
-        <XCircle className="h-5 w-5 text-red-500" />
+        <XCircle style={{ width: '17px', height: '17px', color: '#dc2626' }} />
       )}
-      <span className={`text-sm ${passed ? 'text-[#333F48]' : 'text-red-600'}`}>
+      <span style={{ fontSize: '13px', color: isLoading ? '#6b7a85' : passed ? '#333F48' : '#dc2626', fontWeight: passed ? '400' : '600' }}>
         {label}
       </span>
     </div>
   )
 }
+
+
+
+
+
+
+
+
+
 
 

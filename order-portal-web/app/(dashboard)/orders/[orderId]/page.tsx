@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { OrderDetail } from '@/components/orders/OrderDetail'
+import { assignPSOrderNumber } from '@/lib/utils/assignPSOrderNumber'
 
 export default async function OrderDetailPage({
   params,
@@ -52,6 +53,28 @@ export default async function OrderDetailPage({
     customers: customer,
     order_statuses: status,
     order_lines: orderLines || [],
+  }
+
+  // Auto-assign PS Order Number if order is NEW and doesn't have one yet
+  if (enrichedOrder.status_code === '01' && !enrichedOrder.ps_order_number) {
+    const { psOrderNumber, error: assignError } = await assignPSOrderNumber(
+      supabase,
+      orderId
+    )
+
+    if (!assignError && psOrderNumber) {
+      // Log the PS order number assignment
+      await supabase.from('audit_log').insert({
+        order_id: orderId,
+        user_id: user.id,
+        action_type: 'ps_order_number_assigned',
+        new_value: psOrderNumber,
+        reason: 'Auto-assigned when NEW order opened',
+      })
+
+      // Update the enriched order with the new number
+      enrichedOrder.ps_order_number = psOrderNumber
+    }
   }
 
   // Auto-update status to "Under Review" if status is "Pending" (01)

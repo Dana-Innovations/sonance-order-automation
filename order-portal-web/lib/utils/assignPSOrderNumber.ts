@@ -13,7 +13,7 @@ import { SupabaseClient } from '@supabase/supabase-js'
 export async function assignPSOrderNumber(
   supabase: SupabaseClient,
   orderId: string
-): Promise<{ psOrderNumber: number | null; error: Error | null }> {
+): Promise<{ psOrderNumber: string | null; error: Error | null }> {
   try {
     // First check if order already has a PS Order Number
     const { data: existingOrder, error: fetchError } = await supabase
@@ -42,11 +42,12 @@ export async function assignPSOrderNumber(
     }
 
     const nextNumber = result as number
+    const nextNumberStr = nextNumber.toString()
 
     // Update the order with the new PS Order Number
     const { error: updateError } = await supabase
       .from('orders')
-      .update({ ps_order_number: nextNumber })
+      .update({ ps_order_number: nextNumberStr })
       .eq('id', orderId)
 
     if (updateError) {
@@ -54,8 +55,8 @@ export async function assignPSOrderNumber(
       return { psOrderNumber: null, error: updateError }
     }
 
-    console.log(`✓ Assigned PS Order Number ${nextNumber} to order ${orderId}`)
-    return { psOrderNumber: nextNumber, error: null }
+    console.log(`✓ Assigned PS Order Number ${nextNumberStr} to order ${orderId}`)
+    return { psOrderNumber: nextNumberStr, error: null }
   } catch (error) {
     console.error('Unexpected error in assignPSOrderNumber:', error)
     return { psOrderNumber: null, error: error as Error }

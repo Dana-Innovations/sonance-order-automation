@@ -487,28 +487,45 @@ export function OrderHeader({
                 fontWeight: isImportSuccessful ? 700 : 400,
                 paddingBottom: '6px'
               }}>
-                {isImportSuccessful && order.ps_order_number ? (
-                  <a
-                    href={`https://sonanceerp.corp.sonance.com/psp/FS92SYS/EMPLOYEE/ERP/c/MAINTAIN_SALES_ORDERS.ORDENT_SEARCH.GBL?Page=ORDENT_SEARCH&Action=U&BUSINESS_UNIT=DANA1&ORDER_NO=${order.ps_order_number}&ICAction=ORDENT_SEARCH_BTN`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      color: '#15803d',
-                      fontWeight: 700,
-                      textDecoration: 'underline',
-                      cursor: 'pointer'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = '#166534'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = '#15803d'
-                    }}
-                  >
-                    {order.ps_order_number}
-                  </a>
+                {order.ps_order_number ? (
+                  <>
+                    {isImportSuccessful ? (
+                      <a
+                        href={`https://sonanceerp.corp.sonance.com/psp/FS92SYS/EMPLOYEE/ERP/c/MAINTAIN_SALES_ORDERS.ORDENT_SEARCH.GBL?Page=ORDENT_SEARCH&Action=U&BUSINESS_UNIT=DANA1&ORDER_NO=${order.ps_order_number}&ICAction=ORDENT_SEARCH_BTN`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: '#15803d',
+                          fontWeight: 700,
+                          textDecoration: 'underline',
+                          cursor: 'pointer'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#166534'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = '#15803d'
+                        }}
+                      >
+                        {order.ps_order_number}
+                      </a>
+                    ) : isCancelled ? (
+                      <span style={{ textDecoration: 'line-through', color: '#dc2626' }}>
+                        {order.ps_order_number}
+                      </span>
+                    ) : ['01', '02', '03', '04'].includes(order.status_code) ? (
+                      <span>
+                        {order.ps_order_number}{' '}
+                        <span style={{ fontSize: '12px', color: '#6b7a85', fontStyle: 'italic' }}>
+                          (Pre-assigned)
+                        </span>
+                      </span>
+                    ) : (
+                      order.ps_order_number
+                    )}
+                  </>
                 ) : (
-                  order.ps_order_number || '—'
+                  '—'
                 )}
               </td>
             </tr>
