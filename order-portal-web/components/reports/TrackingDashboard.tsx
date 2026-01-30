@@ -11,23 +11,11 @@ export function TrackingDashboard({ userEmail }: { userEmail: string }) {
   const { data: statusCounts, isLoading } = useQuery({
     queryKey: ['order-status-counts', userEmail],
     queryFn: async () => {
-      // Get assigned customers using email
-      const { data: assignments } = await supabase
-        .from('csr_assignments')
-        .select('ps_customer_id')
-        .eq('user_email', userEmail)
-
-      if (!assignments || assignments.length === 0) {
-        return {}
-      }
-
-      const customerIds = assignments.map((a: { ps_customer_id: string }) => a.ps_customer_id)
-
-      // Get status counts
+      // Get status counts for orders assigned to this CSR
       const { data: orders } = await supabase
         .from('orders')
         .select('status_code')
-        .in('ps_customer_id', customerIds)
+        .eq('csr_id', userEmail)
 
       const counts: Record<string, number> = {}
       orders?.forEach((order: { status_code: string }) => {

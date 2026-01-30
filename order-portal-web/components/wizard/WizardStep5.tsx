@@ -93,7 +93,7 @@ export function WizardStep5({ session, onNext, isLoading }: WizardStepProps) {
             <h3 className="font-semibold text-[#333F48] mb-1">What is this?</h3>
             <p className="text-sm text-[#6b7a85]">
               The SharePoint Folder ID identifies where this customer's order PDFs are stored.
-              The automation system uses this to retrieve and process order documents.
+              The automation system uses this to retrieve and display PDF orders during the review process.
             </p>
           </div>
         </div>
@@ -101,26 +101,42 @@ export function WizardStep5({ session, onNext, isLoading }: WizardStepProps) {
 
       {/* Folder ID Input */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
           <label className="block text-sm font-medium text-[#333F48]">
             SharePoint Folder ID <span className="text-red-500">*</span>
           </label>
           <button
             onClick={() => setShowHelp(!showHelp)}
-            className="text-sm text-[#00A3E1] hover:text-[#0082b8] flex items-center gap-1"
+            className="py-1.5 text-xs font-medium transition-colors flex items-center gap-2"
+            style={{
+              border: '1px solid #00A3E1',
+              borderRadius: '20px',
+              backgroundColor: 'white',
+              color: '#00A3E1',
+              paddingLeft: '16px',
+              paddingRight: '16px'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#00A3E1'
+              e.currentTarget.style.color = 'white'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'white'
+              e.currentTarget.style.color = '#00A3E1'
+            }}
           >
             <HelpCircle className="h-4 w-4" />
             {showHelp ? 'Hide' : 'Show'} help
           </button>
         </div>
 
-        <div className="relative">
+        <div className="flex items-center" style={{ gap: '12px' }}>
           <input
             type="text"
             value={folderId}
             onChange={(e) => handleChange(e.target.value)}
-            placeholder="01ABCDEFGHIJKLMNOPQRSTUVWXYZ234567890"
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#00A3E1]/20 outline-none font-mono text-sm ${
+            placeholder="e.g., 01ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            className={`px-4 border focus:ring-2 focus:ring-[#00A3E1]/20 outline-none font-mono ${
               error
                 ? 'border-red-500'
                 : isAvailable === true
@@ -129,24 +145,19 @@ export function WizardStep5({ session, onNext, isLoading }: WizardStepProps) {
                 ? 'border-orange-500'
                 : 'border-gray-300 focus:border-[#00A3E1]'
             }`}
+            style={{ paddingTop: '13px', paddingBottom: '13px', width: '85%', fontSize: '16px', borderRadius: '12px' }}
             autoFocus
           />
 
-          {/* Availability Indicator */}
+          {/* Availability Indicator - Outside the input */}
           {checking && (
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <div className="animate-spin h-5 w-5 border-2 border-[#00A3E1] border-t-transparent rounded-full"></div>
-            </div>
+            <div className="animate-spin h-5 w-5 border-2 border-[#00A3E1] border-t-transparent rounded-full"></div>
           )}
           {!checking && isAvailable === true && (
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-            </div>
+            <CheckCircle className="h-5 w-5 text-green-500" />
           )}
           {!checking && isAvailable === false && (
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <AlertCircle className="h-5 w-5 text-orange-500" />
-            </div>
+            <AlertCircle className="h-5 w-5 text-orange-500" />
           )}
         </div>
 
@@ -157,7 +168,7 @@ export function WizardStep5({ session, onNext, isLoading }: WizardStepProps) {
 
         {/* Availability Messages */}
         {!error && !checking && isAvailable === true && (
-          <p className="mt-2 text-sm text-green-600 flex items-center gap-1">
+          <p className="mt-2 text-sm flex items-center gap-1" style={{ color: '#10b981', fontWeight: '600' }}>
             <CheckCircle className="h-4 w-4" />
             This Folder ID is available
           </p>
@@ -170,7 +181,7 @@ export function WizardStep5({ session, onNext, isLoading }: WizardStepProps) {
         )}
 
         <p className="mt-2 text-xs text-[#6b7a85]">
-          This is a long alphanumeric string that uniquely identifies the SharePoint folder.
+          This is a long alphanumeric string that uniquely identifies the SharePoint folder. Contact IT for help in retrieving the folder ID for this customer. Folder ID must be setup on SharePoint for the ID to be available. Navigate to this site to setup folder: <a href="https://danainnovations.sharepoint.com/sites/SonanceOrderManagementAutomation/Shared%20Documents/Forms/AllItems.aspx" target="_blank" rel="noopener noreferrer" className="text-[#00A3E1] hover:underline">PDF Order Storage</a>
         </p>
       </div>
 
@@ -221,7 +232,7 @@ export function WizardStep5({ session, onNext, isLoading }: WizardStepProps) {
             <h3 className="font-semibold text-[#333F48] mb-1">Important</h3>
             <p className="text-sm text-[#6b7a85]">
               Make sure this Folder ID is correct. The automation system will look for order PDFs
-              in this folder. An incorrect ID will prevent orders from being processed.
+              in this folder. An incorrect ID will prevent orders from being retrieved and displayed.
             </p>
           </div>
         </div>

@@ -18,7 +18,7 @@ export async function PATCH(
 
   try {
     const body = await request.json()
-    const { wizard_step, customer_data, child_accounts, status } = body
+    const { wizard_step, customer_data, child_accounts, status, question_answers } = body
 
     // Build update object
     const updates: any = {
@@ -29,6 +29,7 @@ export async function PATCH(
     if (customer_data !== undefined) updates.customer_data = customer_data
     if (child_accounts !== undefined) updates.child_accounts = child_accounts
     if (status !== undefined) updates.status = status
+    if (question_answers !== undefined) updates.question_answers = question_answers
 
     // Update customer_name if present in customer_data
     if (customer_data?.customer_name) {

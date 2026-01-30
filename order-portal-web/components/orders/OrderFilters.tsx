@@ -199,40 +199,19 @@ export function OrderFilters({
           <h2 className="text-xs font-medium uppercase tracking-widest text-[#333F48]">
             Filters
           </h2>
+          {activeFilterCount > 0 && (
+            <span className="text-xs text-[#6b7a85]">({activeFilterCount} active)</span>
+          )}
         </div>
-        {activeFilterCount > 0 && (
-          <button
-            onClick={clearFilters}
-            className="clear-all-btn flex items-center gap-2 px-4 py-2 text-xs font-medium tracking-wider transition-all"
-            style={{ 
-              borderRadius: '20px', 
-              border: '1px solid #00A3E1', 
-              fontFamily: 'Montserrat, sans-serif',
-              color: '#00A3E1',
-              backgroundColor: 'transparent'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#00A3E1'
-              e.currentTarget.style.color = 'white'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent'
-              e.currentTarget.style.color = '#00A3E1'
-            }}
-          >
-            <X className="h-3.5 w-3.5" />
-            Clear all ({activeFilterCount})
-          </button>
-        )}
       </div>
 
       {/* Filter Layout - Status on left, other filters on right */}
       <div style={{ display: 'flex', flexDirection: 'row', gap: '24px' }}>
         {/* Status Filter - Left Side */}
         <div style={{ borderRight: '1px solid #D9D9D6', paddingRight: '48px' }}>
-          <label 
-            className="block text-sm uppercase tracking-widest text-[#333F48] mb-4"
-            style={{ fontWeight: 700 }}
+          <label
+            className="block text-sm uppercase tracking-widest text-[#333F48]"
+            style={{ fontWeight: 700, marginBottom: '24px' }}
           >
             Status
           </label>
@@ -246,7 +225,7 @@ export function OrderFilters({
                   style={{ marginBottom: '8px', gap: '12px' }}
                   onClick={() => handleStatusToggle(status.status_code)}
                 >
-                  <div 
+                  <div
                     style={{
                       width: '18px',
                       height: '18px',
@@ -285,6 +264,58 @@ export function OrderFilters({
                 </div>
               )
             })}
+          </div>
+
+          {/* Buttons below status list */}
+          <div className="flex items-center" style={{ gap: '24px', marginTop: '24px' }}>
+            <button
+              onClick={() => {
+                // Select all status codes
+                const allStatusCodes = statuses?.map(s => s.status_code) || []
+                onStatusFilterChange(allStatusCodes)
+              }}
+              className="py-1.5 text-xs font-medium transition-colors uppercase"
+              style={{
+                border: '1px solid #00A3E1',
+                borderRadius: '20px',
+                backgroundColor: 'white',
+                color: '#00A3E1',
+                paddingLeft: '16px',
+                paddingRight: '16px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#00A3E1'
+                e.currentTarget.style.color = 'white'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'white'
+                e.currentTarget.style.color = '#00A3E1'
+              }}
+            >
+              Select All
+            </button>
+            <button
+              onClick={() => onStatusFilterChange([])}
+              className="py-1.5 text-xs font-medium transition-colors uppercase"
+              style={{
+                border: '1px solid #00A3E1',
+                borderRadius: '20px',
+                backgroundColor: 'white',
+                color: '#00A3E1',
+                paddingLeft: '16px',
+                paddingRight: '16px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#00A3E1'
+                e.currentTarget.style.color = 'white'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'white'
+                e.currentTarget.style.color = '#00A3E1'
+              }}
+            >
+              Clear All
+            </button>
           </div>
         </div>
 

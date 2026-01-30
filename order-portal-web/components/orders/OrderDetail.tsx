@@ -7,6 +7,7 @@ import { OrderActions } from './OrderActions'
 import { OrderNavigation } from './OrderNavigation'
 import { Tables } from '@/lib/types/database'
 import { Loader2, Zap, FileText } from 'lucide-react'
+import { PDFHighlightProvider } from '@/lib/contexts/PDFHighlightContext'
 
 // Lazy load PDF viewer for better performance
 const PDFViewer = lazy(() =>
@@ -19,7 +20,7 @@ type Order = Tables<'orders'> & {
   order_lines: Tables<'order_lines'>[]
 }
 
-export function OrderDetail({
+function OrderDetailInner({
   order,
   userId,
 }: {
@@ -33,20 +34,6 @@ export function OrderDetail({
   const [isDragging, setIsDragging] = useState(false)
   const dragStartX = useRef(0)
   const dragStartWidth = useRef(640)
-
-  // Calculate PDF zoom scale proportionally to panel width
-  // Width range: 400-1000px, Scale range: 0.5-2.0
-  const pdfScale = 0.5 + ((pdfPanelWidth - 400) / (1000 - 400)) * (2.0 - 0.5)
-
-  // Handle scale changes from PDF zoom buttons
-  const handleScaleChange = (scaleDelta: number) => {
-    // Convert scale delta to width delta
-    // Scale range: 1.5 (2.0 - 0.5), Width range: 600 (1000 - 400)
-    const widthDelta = (scaleDelta / 1.5) * 600
-    const newWidth = Math.max(400, Math.min(1000, pdfPanelWidth + widthDelta))
-    setPdfPanelWidth(newWidth)
-    savePdfPanelWidth(newWidth)
-  }
 
   // Load saved width from localStorage on mount
   useEffect(() => {
@@ -232,15 +219,25 @@ export function OrderDetail({
                 </div>
               }
             >
-              <PDFViewer
-                pdfUrl={order.pdf_file_url}
-                externalScale={pdfScale}
-                onScaleChange={handleScaleChange}
-              />
+              <PDFViewer pdfUrl={order.pdf_file_url} />
             </Suspense>
           </div>
         </div>
       </div>
     </>
+  )
+}
+
+export function OrderDetail({
+  order,
+  userId,
+}: {
+  order: Order
+  userId: string
+}) {
+  return (
+    <PDFHighlightProvider>
+      <OrderDetailInner order={order} userId={userId} />
+    </PDFHighlightProvider>
   )
 }

@@ -3,7 +3,8 @@
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, usePathname } from 'next/navigation'
 import { User } from '@supabase/supabase-js'
-import { LogOut, ArrowLeft } from 'lucide-react'
+import { LogOut, ArrowLeft, Settings, Home } from 'lucide-react'
+import Link from 'next/link'
 
 // Sonance Logo SVG with "The Beam" (cyan A)
 function SonanceLogo({ className }: { className?: string }) {
@@ -61,6 +62,9 @@ export function Header({ user }: { user: User }) {
   // Check if we're on an order detail page (e.g., /orders/123)
   const isOrderDetailPage = pathname?.startsWith('/orders/') && pathname !== '/orders'
 
+  // Check if we're on a settings page
+  const isSettingsPage = pathname?.startsWith('/settings')
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/login')
@@ -71,21 +75,36 @@ export function Header({ user }: { user: User }) {
     router.push('/orders')
   }
 
+  const handleHomeClick = () => {
+    router.push('/orders')
+  }
+
   return (
     <header 
       className="border-b border-[#2a353d] w-full"
       style={{ backgroundColor: '#333F48' }}
     >
       <div className="relative flex items-center justify-between px-8" style={{ height: '53px' }}>
-        {/* Left spacer for balance */}
-        <div className="w-32" />
+        {/* Settings Icon - Upper Left */}
+        <div className="flex items-center" style={{ marginLeft: '18px' }}>
+          <Link
+            href="/settings"
+            className="flex items-center justify-center p-2 transition-all hover:bg-white/10 rounded-md"
+            style={{ color: 'rgba(255, 255, 255, 0.7)' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 1)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)'}
+            title="Settings"
+          >
+            <Settings className="h-5 w-5" />
+          </Link>
+        </div>
 
         {/* Centered Logo */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <img 
-            src="/logos/Sonance_Logo_2C_Light_RGB.png" 
-            alt="Sonance" 
-            style={{ height: '40px', width: 'auto' }} 
+          <img
+            src="/logos/Sonance_Logo_2C_Light_RGB.png"
+            alt="Sonance"
+            style={{ height: '40px', width: 'auto' }}
           />
         </div>
 
@@ -102,6 +121,16 @@ export function Header({ user }: { user: User }) {
             >
               <ArrowLeft className="h-4 w-4" />
               <span className="hidden sm:inline">Back to Orders</span>
+            </button>
+          )}
+          {isSettingsPage && (
+            <button
+              onClick={handleHomeClick}
+              className="flex items-center gap-2 px-4 py-2 text-xs font-medium tracking-wider text-white/70 transition-all hover:text-white hover:bg-white/10"
+              style={{ borderRadius: '20px', border: '1px solid rgba(255,255,255,0.2)' }}
+            >
+              <Home className="h-4 w-4" />
+              <span className="hidden sm:inline">Home</span>
             </button>
           )}
           <button

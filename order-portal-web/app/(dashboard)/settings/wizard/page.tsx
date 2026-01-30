@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { WizardLandingButtons } from '@/components/wizard/WizardLandingButtons'
+import { DraftSessionCard } from '@/components/wizard/DraftSessionCard'
 
 export default async function WizardLandingPage() {
   const supabase = await createClient()
@@ -10,14 +11,21 @@ export default async function WizardLandingPage() {
 
   if (!user) redirect('/login')
 
+  // Fetch draft wizard sessions for this user
+  const { data: draftSessions } = await supabase
+    .from('prompt_builder_sessions')
+    .select('id, customer_name, wizard_step, created_at, updated_at')
+    .eq('user_id', user.id)
+    .eq('is_customer_wizard', true)
+    .eq('status', 'draft')
+    .order('updated_at', { ascending: false })
+
   return (
     <div className="max-w-3xl mx-auto py-6 px-6">
       {/* Hero Section */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-full mb-4">
-          <Sparkles className="h-8 w-8 text-[#00A3E1]" />
-        </div>
-        <h1 className="text-3xl font-light text-[#333F48] mb-2">
+        <h1 className="text-3xl font-light text-[#333F48] mb-2 flex items-center justify-center">
+          <Sparkles className="h-8 w-8 text-[#00A3E1]" style={{ marginRight: '16px' }} />
           Customer Setup Wizard
         </h1>
       </div>
@@ -98,16 +106,28 @@ export default async function WizardLandingPage() {
       <WizardLandingButtons />
 
       {/* Footer Info */}
-      <div className="text-center text-xs text-[#6b7a85]">
-        <p>Guided setup with AI-powered prompt generation • ⏱️ 15-20 minutes • Best for new customers with AI prompt needs</p>
+      <div className="text-center text-xs text-[#6b7a85] mb-6">
+        <p>Guided setup with AI-powered prompt generation • ⏱️ 15-20 minutes</p>
       </div>
 
       {/* Back Link */}
-      <div className="text-center mt-6">
+      <div className="text-center mb-6">
         <Link href="/settings" className="text-sm text-[#6b7a85] hover:text-[#333F48]">
           ← Back to Settings
         </Link>
       </div>
+
+      {/* Draft Sessions */}
+      {draftSessions && draftSessions.length > 0 && (
+        <div className="mb-8 mx-auto" style={{ maxWidth: '30%' }}>
+          <h2 className="text-lg font-semibold text-[#333F48] mb-4">Continue In-Progress Setup</h2>
+          <div className="space-y-3">
+            {draftSessions.map((session) => (
+              <DraftSessionCard key={session.id} session={session} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

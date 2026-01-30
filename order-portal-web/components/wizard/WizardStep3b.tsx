@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { WizardStepProps } from '@/lib/types/wizard'
 import { createClient } from '@/lib/supabase/client'
-import { AlertCircle, CheckCircle, ArrowRight } from 'lucide-react'
+import { AlertCircle, CheckCircle, ArrowRight, AlertTriangle } from 'lucide-react'
 
 export function WizardStep3b({ session, onNext, isLoading }: WizardStepProps) {
   const [psCustomerId, setPsCustomerId] = useState(
@@ -18,26 +18,60 @@ export function WizardStep3b({ session, onNext, isLoading }: WizardStepProps) {
   const checkAvailability = async (value: string) => {
     if (!value.trim()) {
       setIsAvailable(null)
+      setError('')
       return
     }
 
     setChecking(true)
+    const trimmedValue = value.trim().toUpperCase()
 
-    const { data, error } = await supabase
+    // Check if it exists as a parent customer
+    const { data: parentCustomer, error: parentError } = await supabase
       .from('customers')
-      .select('ps_customer_id')
-      .eq('ps_customer_id', value.trim().toUpperCase())
+      .select('ps_customer_id, customer_name')
+      .eq('ps_customer_id', trimmedValue)
       .maybeSingle()
 
-    setChecking(false)
-
-    if (error) {
-      console.error('Error checking availability:', error)
+    if (parentError) {
+      console.error('Error checking parent customer:', parentError)
+      setChecking(false)
       setIsAvailable(null)
       return
     }
 
-    setIsAvailable(!data)
+    if (parentCustomer) {
+      setError(`This Customer ID is already in use by ${parentCustomer.customer_name}`)
+      setChecking(false)
+      setIsAvailable(false)
+      return
+    }
+
+    // Check if it exists as a child account
+    const { data: childAccount, error: childError } = await supabase
+      .from('customer_child_accounts')
+      .select('child_ps_account_id, customer_ps_id, customers!customer_child_accounts_customer_ps_id_fkey(customer_name)')
+      .eq('child_ps_account_id', trimmedValue)
+      .maybeSingle()
+
+    if (childError) {
+      console.error('Error checking child account:', childError)
+      setChecking(false)
+      setIsAvailable(null)
+      return
+    }
+
+    if (childAccount) {
+      const parentName = (childAccount.customers as any)?.customer_name || 'another customer'
+      setError(`This Customer ID is already a child account of ${parentName}`)
+      setChecking(false)
+      setIsAvailable(false)
+      return
+    }
+
+    // Available
+    setError('')
+    setChecking(false)
+    setIsAvailable(true)
   }
 
   const handleChange = (value: string) => {
@@ -73,17 +107,36 @@ export function WizardStep3b({ session, onNext, isLoading }: WizardStepProps) {
     }
 
     // Check availability one more time before continuing
-    if (isAvailable === null || isAvailable === undefined) {
-      await checkAvailability(trimmedValue)
+    const upperValue = trimmedValue.toUpperCase()
+
+    // Check if it exists as a parent customer
+    const { data: parentCustomer } = await supabase
+      .from('customers')
+      .select('ps_customer_id, customer_name')
+      .eq('ps_customer_id', upperValue)
+      .maybeSingle()
+
+    if (parentCustomer) {
+      setError(`This Customer ID is already in use by ${parentCustomer.customer_name}`)
+      setIsAvailable(false)
       return
     }
 
-    if (isAvailable === false) {
-      setError('This PeopleSoft Customer ID is already in use')
+    // Check if it exists as a child account
+    const { data: childAccount } = await supabase
+      .from('customer_child_accounts')
+      .select('child_ps_account_id, customer_ps_id, customers!customer_child_accounts_customer_ps_id_fkey(customer_name)')
+      .eq('child_ps_account_id', upperValue)
+      .maybeSingle()
+
+    if (childAccount) {
+      const parentName = (childAccount.customers as any)?.customer_name || 'another customer'
+      setError(`This Customer ID is already a child account of ${parentName}`)
+      setIsAvailable(false)
       return
     }
 
-    await onNext({ ps_customer_id: trimmedValue.toUpperCase() })
+    await onNext({ ps_customer_id: upperValue })
   }
 
   return (
@@ -101,45 +154,55 @@ export function WizardStep3b({ session, onNext, isLoading }: WizardStepProps) {
         <label className="block text-sm font-medium text-[#333F48] mb-6">
           PeopleSoft Customer ID <span className="text-red-500">*</span>
         </label>
-        <div className="relative">
-          <input
-            type="text"
-            value={psCustomerId}
-            onChange={(e) => handleChange(e.target.value)}
-            placeholder="e.g., ACME-CORP or ACME123"
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#00A3E1]/20 outline-none ${
-              error
-                ? 'border-red-500'
-                : isAvailable === true
-                ? 'border-green-500'
-                : isAvailable === false
-                ? 'border-orange-500'
-                : 'border-gray-300 focus:border-[#00A3E1]'
-            }`}
-            autoFocus
-          />
+        <div className="flex items-center">
+          <div className="relative" style={{ width: '250px' }}>
+            <input
+              type="text"
+              value={psCustomerId}
+              onChange={(e) => handleChange(e.target.value)}
+              placeholder="e.g., 238482"
+              className={`px-4 border focus:ring-2 focus:ring-[#00A3E1]/20 outline-none ${
+                error
+                  ? 'border-red-500'
+                  : isAvailable === true
+                  ? 'border-green-500'
+                  : isAvailable === false
+                  ? 'border-orange-500'
+                  : 'border-gray-300 focus:border-[#00A3E1]'
+              }`}
+              style={{ paddingTop: '13px', paddingBottom: '13px', width: '90%', fontSize: '16px', borderRadius: '12px' }}
+              autoFocus
+            />
 
-          {/* Availability Indicator */}
-          {checking && (
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <div className="animate-spin h-5 w-5 border-2 border-[#00A3E1] border-t-transparent rounded-full"></div>
-            </div>
-          )}
-          {!checking && isAvailable === true && (
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-            </div>
-          )}
-          {!checking && isAvailable === false && (
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <AlertCircle className="h-5 w-5 text-orange-500" />
+            {/* Availability Indicator */}
+            {checking && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <div className="animate-spin h-5 w-5 border-2 border-[#00A3E1] border-t-transparent rounded-full"></div>
+              </div>
+            )}
+            {!checking && isAvailable === true && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+              </div>
+            )}
+            {!checking && isAvailable === false && !error && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <AlertCircle className="h-5 w-5 text-orange-500" />
+              </div>
+            )}
+          </div>
+
+          {/* Error Badge */}
+          {error && (
+            <div className="flex-shrink-0 flex items-center" style={{ marginLeft: '12px', height: '19px' }}>
+              <AlertTriangle style={{ width: '16px', height: '16px', color: '#dc2626' }} />
             </div>
           )}
         </div>
 
         {/* Error Message */}
         {error && (
-          <p className="mt-2 text-sm text-red-500">{error}</p>
+          <p className="mt-2 text-sm" style={{ color: '#dc2626', fontWeight: '600' }}>{error}</p>
         )}
 
         {/* Availability Messages */}
@@ -149,42 +212,31 @@ export function WizardStep3b({ session, onNext, isLoading }: WizardStepProps) {
             This ID is available
           </p>
         )}
-        {!error && !checking && isAvailable === false && (
-          <p className="mt-2 text-sm text-orange-600 flex items-center gap-1">
-            <AlertCircle className="h-4 w-4" />
-            This ID is already in use. Please choose a different one.
-          </p>
-        )}
 
         {/* Help Text */}
         <p className="mt-2 text-xs text-[#6b7a85]">
-          Enter the exact PeopleSoft Customer ID as it appears in your system.
-          This will be used for order routing and must be unique.
+          Enter the exact PeopleSoft Customer ID as it appears in PeopleSoft Customer Setup.
         </p>
       </div>
 
       {/* Info Box */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-        <div className="flex items-start gap-4">
-          <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" style={{ color: '#00A3E1' }} />
-          <div>
-            <h3 className="font-semibold text-[#333F48] mb-1">Important</h3>
-            <p className="text-sm text-[#6b7a85]">
-              Make sure this ID matches <strong>exactly</strong> what's in PeopleSoft.
-              Mismatches will cause order routing errors.
-            </p>
-          </div>
-        </div>
+        <h3 className="font-semibold text-[#333F48] flex items-center" style={{ marginBottom: '0px' }}>
+          <AlertCircle className="h-5 w-5 flex-shrink-0" style={{ color: '#00A3E1', marginRight: '12px' }} />
+          Important
+        </h3>
+        <p className="text-sm text-[#6b7a85]" style={{ marginLeft: '32px' }}>
+          Make sure this ID matches <strong>exactly</strong> what's in PeopleSoft.
+          Mismatches will cause order upload errors and delays.
+        </p>
       </div>
 
       {/* Examples */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
         <h3 className="font-semibold text-[#333F48] text-sm" style={{ marginBottom: '4px' }}>Valid formats:</h3>
         <ul className="text-sm text-[#6b7a85] space-y-1" style={{ paddingLeft: '20px', marginTop: 0 }}>
-          <li><code className="bg-white px-2 py-0.5 rounded">ACME-CORP</code> - Company name with hyphen</li>
-          <li><code className="bg-white px-2 py-0.5 rounded">ACME123</code> - Company name with numbers</li>
-          <li><code className="bg-white px-2 py-0.5 rounded">ACME_WEST</code> - Company name with underscore</li>
-          <li><code className="bg-white px-2 py-0.5 rounded">12345</code> - Numeric ID</li>
+          <li><code className="bg-white px-2 py-0.5 rounded">9190049</code> - Numeric Only</li>
+          <li><code className="bg-white px-2 py-0.5 rounded">I204534</code> - Numeric with Alpha prefix</li>
         </ul>
       </div>
 

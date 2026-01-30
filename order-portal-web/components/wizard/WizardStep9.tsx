@@ -29,17 +29,15 @@ export function WizardStep9({ session, onNext, isLoading }: WizardStepProps) {
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <div className="flex items-start gap-4">
-          <MapPin className="h-5 w-5 flex-shrink-0 mt-0.5" style={{ color: '#00A3E1' }} />
-          <div>
-            <h3 className="font-semibold text-[#333F48] mb-1">What is this for?</h3>
-            <p className="text-sm text-[#6b7a85]">
-              Set a default ship-to name or location for this customer's orders. This could be
-              a warehouse name, location identifier, or company name. If the order PDF doesn't
-              specify a ship-to name, this default will be used. This is optional.
-            </p>
-          </div>
-        </div>
+        <h3 className="font-semibold text-[#333F48] mb-2 flex items-center gap-3">
+          <MapPin className="h-5 w-5 flex-shrink-0" style={{ color: '#00A3E1' }} />
+          What is this for?
+        </h3>
+        <p className="text-sm text-[#6b7a85]" style={{ marginLeft: '32px' }}>
+          Set a default ship-to name or location for this customer's orders. This could be
+          a warehouse name, location identifier, or company name. If the order PDF doesn't
+          specify a ship-to name, this default will be used. This is optional.
+        </p>
       </div>
 
       <div className="mb-6">
@@ -51,7 +49,8 @@ export function WizardStep9({ session, onNext, isLoading }: WizardStepProps) {
           value={shiptoName}
           onChange={(e) => setShiptoName(e.target.value)}
           placeholder="e.g., Main Warehouse, HQ Location, or Customer Name"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-[#00A3E1] focus:ring-2 focus:ring-[#00A3E1]/20 outline-none"
+          className="px-4 border border-gray-300 focus:border-[#00A3E1] focus:ring-2 focus:ring-[#00A3E1]/20 outline-none"
+          style={{ paddingTop: '13px', paddingBottom: '13px', width: '90%', fontSize: '16px', borderRadius: '12px' }}
           autoFocus
         />
         <p className="mt-2 text-xs text-[#6b7a85]">
@@ -79,38 +78,7 @@ export function WizardStep9({ session, onNext, isLoading }: WizardStepProps) {
         </p>
       </div>
 
-      {/* Summary Card */}
-      <div className="bg-gradient-to-br from-green-50 to-blue-50 border-2 border-green-200 rounded-lg p-6 mb-6">
-        <h3 className="font-semibold text-[#333F48] mb-3 flex items-center gap-2">
-          <span className="text-2xl">🎉</span>
-          Customer Information Complete!
-        </h3>
-        <p className="text-sm text-[#6b7a85] mb-4">
-          You've completed the customer information section. Next, we'll guide you through
-          voice-recorded questions to help build intelligent AI prompts for order processing.
-        </p>
-        <div className="bg-white rounded-lg p-4">
-          <h4 className="font-semibold text-[#333F48] mb-2 text-sm">What's next:</h4>
-          <ul className="text-sm text-[#6b7a85] space-y-1">
-            <li>✓ Upload sample order PDF</li>
-            <li>✓ Answer voice-recorded questions about order headers</li>
-            <li>✓ Answer voice-recorded questions about product line items</li>
-            {session.customer_data?.is_multi_account && (
-              <li>✓ Answer questions about multi-account routing</li>
-            )}
-            <li>✓ Review and save your AI prompts</li>
-          </ul>
-        </div>
-      </div>
-
-      <div className="flex justify-between">
-        <button
-          onClick={handleSkip}
-          disabled={isLoading}
-          className="px-6 py-3 text-[#6b7a85] hover:text-[#333F48] font-semibold transition-colors"
-        >
-          Skip for now
-        </button>
+      <div className="flex justify-end">
         <button
           onClick={handleContinue}
           disabled={isLoading}
@@ -137,7 +105,7 @@ export function WizardStep9({ session, onNext, isLoading }: WizardStepProps) {
         >
           {isLoading ? 'Saving...' : (
             <>
-              Continue to Voice Questions
+              Continue
               <ArrowRight className="h-4 w-4" />
             </>
           )}

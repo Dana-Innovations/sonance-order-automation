@@ -97,7 +97,7 @@ export function WizardStep0({ session, onNext, isLoading }: WizardStepProps) {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2" style={{ gap: '24px' }}>
             {/* Start from Scratch */}
             <button
               onClick={async () => {
@@ -106,15 +106,15 @@ export function WizardStep0({ session, onNext, isLoading }: WizardStepProps) {
               }}
               className="p-6 border-2 border-gray-200 rounded-lg hover:border-[#00A3E1] hover:bg-blue-50 transition-all text-left group"
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-[#00A3E1] transition-colors">
-                  <Sparkles className="h-6 w-6 text-[#00A3E1] group-hover:text-white" />
+              <div className="flex items-center" style={{ gap: '16px', marginBottom: '8px' }}>
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Sparkles className="h-6 w-6 text-[#00A3E1]" />
                 </div>
-                <h3 className="text-lg font-semibold text-[#333F48]">
+                <h3 className="text-lg font-semibold text-[#333F48]" style={{ margin: 0 }}>
                   Start from Scratch
                 </h3>
               </div>
-              <p className="text-sm text-[#6b7a85]">
+              <p className="text-sm text-[#6b7a85]" style={{ margin: 0, paddingLeft: '60px' }}>
                 Create a completely new customer with fresh settings
               </p>
             </button>
@@ -124,15 +124,15 @@ export function WizardStep0({ session, onNext, isLoading }: WizardStepProps) {
               onClick={() => setChoice('copy')}
               className="p-6 border-2 border-gray-200 rounded-lg hover:border-[#00A3E1] hover:bg-blue-50 transition-all text-left group"
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-[#00A3E1] transition-colors">
-                  <Copy className="h-6 w-6 text-[#00A3E1] group-hover:text-white" />
+              <div className="flex items-center" style={{ gap: '16px', marginBottom: '8px' }}>
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Copy className="h-6 w-6 text-[#00A3E1]" />
                 </div>
-                <h3 className="text-lg font-semibold text-[#333F48]">
+                <h3 className="text-lg font-semibold text-[#333F48]" style={{ margin: 0 }}>
                   Copy from Existing
                 </h3>
               </div>
-              <p className="text-sm text-[#6b7a85]">
+              <p className="text-sm text-[#6b7a85]" style={{ margin: 0, paddingLeft: '60px' }}>
                 Start with settings from another customer and modify
               </p>
             </button>
@@ -141,10 +141,26 @@ export function WizardStep0({ session, onNext, isLoading }: WizardStepProps) {
       )}
 
       {choice === 'copy' && (
-        <>
+        <div style={{ maxWidth: '500px', margin: '0 auto' }}>
           <button
             onClick={() => setChoice(null)}
-            className="mb-6 text-sm text-[#6b7a85] hover:text-[#333F48]"
+            className="mb-6 py-1.5 text-xs font-medium transition-colors flex items-center gap-2"
+            style={{
+              border: '1px solid #00A3E1',
+              borderRadius: '20px',
+              backgroundColor: 'white',
+              color: '#00A3E1',
+              paddingLeft: '16px',
+              paddingRight: '16px'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#00A3E1'
+              e.currentTarget.style.color = 'white'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'white'
+              e.currentTarget.style.color = '#00A3E1'
+            }}
           >
             ← Change selection
           </button>
@@ -154,30 +170,18 @@ export function WizardStep0({ session, onNext, isLoading }: WizardStepProps) {
               Select Customer to Copy From
             </h2>
 
-            {/* Search */}
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-[#6b7a85]" />
-              <input
-                type="text"
-                placeholder="Search customers..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:border-[#00A3E1] focus:ring-2 focus:ring-[#00A3E1]/20 outline-none"
-              />
-            </div>
-
             {/* Customer List */}
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {loadingCustomers ? (
                 <div className="text-center py-8 text-[#6b7a85]">
                   Loading customers...
                 </div>
-              ) : filteredCustomers.length === 0 ? (
+              ) : customers.length === 0 ? (
                 <div className="text-center py-8 text-[#6b7a85]">
                   No customers found
                 </div>
               ) : (
-                filteredCustomers.map(customer => (
+                customers.map(customer => (
                   <button
                     key={customer.ps_customer_id}
                     onClick={() => setSelectedCustomerId(customer.ps_customer_id)}
@@ -242,7 +246,7 @@ export function WizardStep0({ session, onNext, isLoading }: WizardStepProps) {
               </ul>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {choice && (

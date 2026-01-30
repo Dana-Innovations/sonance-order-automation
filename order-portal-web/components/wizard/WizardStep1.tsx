@@ -51,9 +51,10 @@ export function WizardStep1({ session, onNext, isLoading }: WizardStepProps) {
             setError('')
           }}
           placeholder="Enter customer name (e.g., Acme Corporation)"
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#00A3E1]/20 outline-none ${
+          className={`px-4 border focus:ring-2 focus:ring-[#00A3E1]/20 outline-none ${
             error ? 'border-red-500' : 'border-gray-300 focus:border-[#00A3E1]'
           }`}
+          style={{ paddingTop: '13px', paddingBottom: '13px', width: '90%', fontSize: '16px', borderRadius: '12px' }}
           autoFocus
         />
         {error && (

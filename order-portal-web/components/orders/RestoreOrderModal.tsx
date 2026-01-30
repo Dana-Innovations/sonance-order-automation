@@ -79,54 +79,106 @@ export function RestoreOrderModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg">
-        <h2 className="text-xl font-semibold text-card-foreground mb-4">
-          Restore Order
-        </h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          This will restore the cancelled order to "Under Review" status and set all lines to active.
-        </p>
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-foreground mb-2">
-            Reason for restoration <span className="text-destructive">*</span>
-          </label>
-          <textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Enter reason for restoring the order (minimum 10 characters)"
-            rows={4}
-            maxLength={500}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-          <p className="mt-1 text-xs text-muted-foreground">
-            {reason.length}/500 characters (minimum 10 required)
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+      <div className="rounded-lg shadow-lg flex flex-col" style={{ width: '500px', maxWidth: '90vw', maxHeight: '80vh', backgroundColor: 'white', border: '1px solid #00A3E1', position: 'relative', top: '-5vh' }}>
+        {/* Header */}
+        <div className="border-b border-gray-300" style={{ backgroundColor: 'white', paddingTop: '5px', paddingBottom: '20px', paddingLeft: '32px', paddingRight: '32px' }}>
+          <h2 className="font-semibold" style={{ color: '#666', fontSize: '14px' }}>
+            Restore Order
+          </h2>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto" style={{ backgroundColor: 'white', paddingTop: '8px', paddingBottom: '32px', paddingLeft: '32px', paddingRight: '32px' }}>
+          <p style={{ fontSize: '12px', color: '#666', marginBottom: '16px' }}>
+            This will restore the cancelled order to "Under Review" status and set all lines to active.
           </p>
-        </div>
-        <div className="mb-6">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={(e) => setConfirmed(e.target.checked)}
-              className="rounded border-input"
+          <div style={{ marginBottom: '16px' }}>
+            <label className="block font-medium mb-2" style={{ fontSize: '12px', color: '#333' }}>
+              Reason for restoration <span style={{ color: '#dc2626' }}>*</span>
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Enter reason for restoring the order (minimum 10 characters)"
+              rows={4}
+              maxLength={500}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={{ fontSize: '12px', backgroundColor: 'white', color: '#000' }}
             />
-            <span className="text-sm text-foreground">
-              I understand this order and all its lines will be restored to active status
-            </span>
-          </label>
+            <p style={{ marginTop: '4px', fontSize: '11px', color: '#666' }}>
+              {reason.length}/500 characters (minimum 10 required)
+            </p>
+          </div>
+          <div style={{ marginBottom: '4px' }}>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(e) => setConfirmed(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <span style={{ fontSize: '12px', color: '#333' }}>
+                I understand this order and all its lines will be restored to active status
+              </span>
+            </label>
+          </div>
         </div>
-        <div className="flex gap-2 justify-end">
+
+        {/* Footer */}
+        <div className="border-t border-gray-300 flex justify-center gap-3" style={{ backgroundColor: 'white', paddingTop: '20px', paddingBottom: '20px' }}>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium hover:bg-muted/80"
+            className="font-medium transition-colors"
+            style={{
+              border: '1px solid #00A3E1',
+              borderRadius: '20px',
+              backgroundColor: 'white',
+              color: '#00A3E1',
+              paddingLeft: '20px',
+              paddingRight: '20px',
+              paddingTop: '6px',
+              paddingBottom: '6px',
+              fontSize: '9px',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#00A3E1'
+              e.currentTarget.style.color = 'white'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'white'
+              e.currentTarget.style.color = '#00A3E1'
+            }}
           >
             Go Back
           </button>
           <button
             onClick={handleRestore}
             disabled={reason.length < 10 || !confirmed || isRestoring}
-            className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="font-medium transition-colors"
+            style={{
+              border: '1px solid #10b981',
+              borderRadius: '20px',
+              backgroundColor: reason.length < 10 || !confirmed || isRestoring ? '#ccc' : '#10b981',
+              color: 'white',
+              paddingLeft: '20px',
+              paddingRight: '20px',
+              paddingTop: '6px',
+              paddingBottom: '6px',
+              fontSize: '9px',
+              cursor: reason.length < 10 || !confirmed || isRestoring ? 'not-allowed' : 'pointer',
+              opacity: reason.length < 10 || !confirmed || isRestoring ? 0.5 : 1,
+            }}
+            onMouseEnter={(e) => {
+              if (!(reason.length < 10 || !confirmed || isRestoring)) {
+                e.currentTarget.style.backgroundColor = '#059669'
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!(reason.length < 10 || !confirmed || isRestoring)) {
+                e.currentTarget.style.backgroundColor = '#10b981'
+              }
+            }}
           >
             {isRestoring ? 'Restoring...' : 'Restore Order'}
           </button>

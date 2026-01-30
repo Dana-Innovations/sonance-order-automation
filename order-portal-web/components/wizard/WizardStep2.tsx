@@ -63,8 +63,7 @@ export function WizardStep2({ session, onNext, isLoading }: WizardStepProps) {
                 Yes - Multi-territory/multi-account customer
               </h4>
               <p className="text-sm text-[#6b7a85]">
-                Orders route to different PeopleSoft accounts based on specific criteria.
-                You'll configure routing logic later in the wizard.
+                Orders from this customer associated to multiple PeopleSoft Customer Account IDs.
               </p>
             </div>
           </div>

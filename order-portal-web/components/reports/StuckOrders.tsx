@@ -12,18 +12,6 @@ export function StuckOrders({ userEmail }: { userEmail: string }) {
   const { data: stuckOrders } = useQuery({
     queryKey: ['stuck-orders', userEmail],
     queryFn: async () => {
-      // Get assigned customers using email
-      const { data: assignments } = await supabase
-        .from('csr_assignments')
-        .select('ps_customer_id')
-        .eq('user_email', userEmail)
-
-      if (!assignments || assignments.length === 0) {
-        return []
-      }
-
-      const customerIds = assignments.map((a) => a.ps_customer_id)
-
       // Get orders that have been in the same status for more than 24 hours
       const twentyFourHoursAgo = new Date()
       twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24)
@@ -40,7 +28,7 @@ export function StuckOrders({ userEmail }: { userEmail: string }) {
           order_statuses!orders_status_code_fkey(status_name)
         `
         )
-        .in('ps_customer_id', customerIds)
+        .eq('csr_id', userEmail)
         .neq('status_code', '05') // Exclude ERP Processed
         .neq('status_code', '06') // Exclude Cancelled
         .lt('updated_at', twentyFourHoursAgo.toISOString())

@@ -238,14 +238,14 @@ export function WizardStep4({ session, onNext, isLoading }: WizardStepProps) {
           {emails.map((email, index) => (
             <div key={index} style={{ marginBottom: '16px' }}>
               <div className="flex items-center">
-                <div className="relative" style={{ width: '240px' }}>
+                <div className="relative" style={{ width: '300px' }}>
                   <input
                     ref={(el) => { inputRefs.current[index] = el }}
                     type="email"
                     value={email}
                     onChange={(e) => handleEmailChange(index, e.target.value)}
                     placeholder="email@example.com"
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#00A3E1]/20 outline-none ${
+                    className={`px-4 border focus:ring-2 focus:ring-[#00A3E1]/20 outline-none ${
                       errors[index]
                         ? 'border-red-500'
                         : availability[index] === true
@@ -254,6 +254,7 @@ export function WizardStep4({ session, onNext, isLoading }: WizardStepProps) {
                         ? 'border-orange-500'
                         : 'border-gray-300 focus:border-[#00A3E1]'
                     }`}
+                    style={{ paddingTop: '10px', paddingBottom: '10px', width: '300px', fontSize: '16px', borderRadius: '12px' }}
                   />
 
                   {/* Status Indicators (only when no error) */}

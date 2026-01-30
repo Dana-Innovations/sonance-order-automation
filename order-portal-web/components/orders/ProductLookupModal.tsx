@@ -12,11 +12,13 @@ interface ProductLookupModalProps {
   psCustomerId: string
   currencyCode: string
   lineNumber?: number
+  showQuantityEntry?: boolean  // Whether to show quantity entry (for Add Line) or immediate selection (for Edit)
   onSelect: (product: {
     product_id: string
     uom: string
     dfi_price: number
     description: string
+    quantity?: number
   }) => void
   onClose: () => void
 }
@@ -25,6 +27,7 @@ export function ProductLookupModal({
   psCustomerId,
   currencyCode,
   lineNumber,
+  showQuantityEntry = false,
   onSelect,
   onClose,
 }: ProductLookupModalProps) {
@@ -33,6 +36,8 @@ export function ProductLookupModal({
   const [products, setProducts] = useState<CustomerProductPricing[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<CustomerProductPricing | null>(null)
+  const [quantity, setQuantity] = useState<number>(1)
   const supabase = createClient()
 
   // Debounce search query (300ms)
@@ -106,13 +111,44 @@ export function ProductLookupModal({
   }, [onClose])
 
   const handleProductSelect = (product: CustomerProductPricing) => {
+    if (showQuantityEntry) {
+      // Show quantity entry screen for Add Line
+      setSelectedProduct(product)
+      setQuantity(1)
+    } else {
+      // Immediate selection for Edit Line
+      onSelect({
+        product_id: product.product_id,
+        uom: product.uom || 'EA',
+        dfi_price: product.dfi_price || 0,
+        description: product.description || '',
+      })
+      onClose()
+    }
+  }
+
+  const handleConfirm = () => {
+    if (!selectedProduct) return
+
     onSelect({
-      product_id: product.product_id,
-      uom: product.uom || 'EA',
-      dfi_price: product.dfi_price || 0,
-      description: product.description || '',
+      product_id: selectedProduct.product_id,
+      uom: selectedProduct.uom || 'EA',
+      dfi_price: selectedProduct.dfi_price || 0,
+      description: selectedProduct.description || '',
+      quantity: quantity,
     })
     onClose()
+  }
+
+  const handleCancel = () => {
+    if (selectedProduct) {
+      // If a product is selected, go back to search
+      setSelectedProduct(null)
+      setQuantity(1)
+    } else {
+      // If no product selected, close the modal
+      onClose()
+    }
   }
 
   const formatPrice = (price: number | null) => {
@@ -126,10 +162,22 @@ export function ProductLookupModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-4xl rounded-lg shadow-lg" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column', backgroundColor: 'white', border: '1px solid #00A3E1' }}>
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 9999,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      padding: '20px'
+    }}>
+      <div className="rounded-lg shadow-lg" style={{ width: '450px', maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', backgroundColor: 'white', border: '1px solid #00A3E1' }}>
         {/* Header */}
-        <div className="border-b border-gray-300" style={{ backgroundColor: 'white', paddingTop: '8px', paddingBottom: '12px', paddingLeft: '24px', paddingRight: '24px' }}>
+        <div className="border-b border-gray-300" style={{ backgroundColor: 'white', paddingTop: '16px', paddingBottom: '16px', paddingLeft: '32px', paddingRight: '32px' }}>
           <div className="mb-3">
             <h2 className="font-semibold" style={{ color: '#666', fontSize: '11px' }}>
               {lineNumber ? `Line ${lineNumber} - Product Lookup` : 'Product Lookup'}
@@ -149,9 +197,60 @@ export function ProductLookupModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6" style={{ backgroundColor: 'white' }}>
-          {!searchQuery || searchQuery.length < 2 ? (
-            <div className="text-center py-12" style={{ color: '#666', fontSize: '13px', paddingLeft: '24px', paddingRight: '24px' }}>
+        <div className="flex-1 overflow-y-auto" style={{ backgroundColor: 'white', padding: '24px 32px' }}>
+          {selectedProduct ? (
+            /* Quantity Entry Form */
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-medium text-[#333F48] mb-3" style={{ fontSize: '13px' }}>
+                  Selected Product
+                </h3>
+                <div className="bg-gray-50 rounded-md p-3 space-y-2" style={{ fontSize: '11px' }}>
+                  <div className="flex justify-between">
+                    <span className="font-medium text-gray-600">Product ID:</span>
+                    <span className="font-semibold text-[#333F48]">{selectedProduct.product_id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium text-gray-600">Description:</span>
+                    <span className="text-[#333F48]">{selectedProduct.description || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium text-gray-600">UOM:</span>
+                    <span className="text-[#333F48]">{selectedProduct.uom || 'EA'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium text-gray-600">Unit Price:</span>
+                    <span className="font-semibold text-[#00A3E1]">{formatPrice(selectedProduct.dfi_price)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-medium text-[#333F48] mb-2" style={{ fontSize: '13px' }}>
+                  Quantity
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  style={{ fontSize: '13px' }}
+                  autoFocus
+                />
+              </div>
+
+              <div className="bg-blue-50 rounded-md p-3 border border-blue-200">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-[#333F48]" style={{ fontSize: '13px' }}>Line Total:</span>
+                  <span className="font-bold text-[#00A3E1]" style={{ fontSize: '16px' }}>
+                    {formatPrice((selectedProduct.dfi_price || 0) * quantity)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : !searchQuery || searchQuery.length < 2 ? (
+            <div className="text-center py-12" style={{ color: '#666', fontSize: '13px' }}>
               <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p style={{ marginTop: '16px', marginBottom: '16px' }}>Start typing to search for products...</p>
               <p className="mt-2" style={{ fontSize: '11px' }}>Enter at least 2 characters</p>
@@ -168,7 +267,7 @@ export function ProductLookupModal({
               </div>
             </div>
           ) : products.length > 0 ? (
-            <div className="overflow-x-auto" style={{ padding: '0 24px' }}>
+            <div className="overflow-x-auto">
               <table className="w-full" style={{ fontSize: '12px' }}>
                 <thead className="border-b border-gray-300">
                   <tr style={{ backgroundColor: '#f5f5f5' }}>
@@ -210,32 +309,92 @@ export function ProductLookupModal({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-300 flex justify-center" style={{ backgroundColor: 'white', paddingTop: '8px', paddingBottom: '8px' }}>
-          <button
-            onClick={onClose}
-            className="font-medium transition-colors"
-            style={{
-              border: '1px solid #00A3E1',
-              borderRadius: '20px',
-              backgroundColor: 'white',
-              color: '#00A3E1',
-              paddingLeft: '20px',
-              paddingRight: '20px',
-              paddingTop: '6px',
-              paddingBottom: '6px',
-              fontSize: '9px',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#00A3E1'
-              e.currentTarget.style.color = 'white'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'white'
-              e.currentTarget.style.color = '#00A3E1'
-            }}
-          >
-            Close
-          </button>
+        <div className="border-t border-gray-300 flex justify-center gap-3" style={{ backgroundColor: 'white', paddingTop: '16px', paddingBottom: '16px' }}>
+          {selectedProduct ? (
+            <>
+              <button
+                onClick={handleCancel}
+                className="font-medium transition-colors"
+                style={{
+                  border: '1px solid #00A3E1',
+                  borderRadius: '20px',
+                  backgroundColor: 'white',
+                  color: '#00A3E1',
+                  paddingLeft: '20px',
+                  paddingRight: '20px',
+                  paddingTop: '6px',
+                  paddingBottom: '6px',
+                  fontSize: '9px',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#00A3E1'
+                  e.currentTarget.style.color = 'white'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white'
+                  e.currentTarget.style.color = '#00A3E1'
+                }}
+              >
+                Back
+              </button>
+              <button
+                onClick={handleConfirm}
+                disabled={quantity < 1}
+                className="font-medium transition-colors"
+                style={{
+                  border: '1px solid #00A3E1',
+                  borderRadius: '20px',
+                  backgroundColor: '#00A3E1',
+                  color: 'white',
+                  paddingLeft: '20px',
+                  paddingRight: '20px',
+                  paddingTop: '6px',
+                  paddingBottom: '6px',
+                  fontSize: '9px',
+                  cursor: quantity < 1 ? 'not-allowed' : 'pointer',
+                  opacity: quantity < 1 ? 0.5 : 1,
+                }}
+                onMouseEnter={(e) => {
+                  if (quantity >= 1) {
+                    e.currentTarget.style.backgroundColor = '#008bc4'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (quantity >= 1) {
+                    e.currentTarget.style.backgroundColor = '#00A3E1'
+                  }
+                }}
+              >
+                OK
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleCancel}
+              className="font-medium transition-colors"
+              style={{
+                border: '1px solid #00A3E1',
+                borderRadius: '20px',
+                backgroundColor: 'white',
+                color: '#00A3E1',
+                paddingLeft: '20px',
+                paddingRight: '20px',
+                paddingTop: '6px',
+                paddingBottom: '6px',
+                fontSize: '9px',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#00A3E1'
+                e.currentTarget.style.color = 'white'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'white'
+                e.currentTarget.style.color = '#00A3E1'
+              }}
+            >
+              Close
+            </button>
+          )}
         </div>
       </div>
     </div>

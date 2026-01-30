@@ -43,31 +43,31 @@ export function OrderTable({ orders }: { orders: Order[] }) {
         <table className="w-full">
           <thead>
             <tr className="border-b border-[#D9D9D6]" style={{ backgroundColor: '#F5F5F5' }}>
-              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px' }}>
+              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '12px' }}>
                 Cust. Order #
               </th>
-              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px' }}>
+              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '12px' }}>
                 PS Order #
               </th>
-              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px' }}>
+              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '12px' }}>
                 Order Date
               </th>
-              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px' }}>
+              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '12px' }}>
                 Customer
               </th>
-              <th className="py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px', paddingLeft: '16px', paddingRight: '8px', maxWidth: '120px' }}>
+              <th className="py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '12px', paddingLeft: '16px', paddingRight: '8px', maxWidth: '120px' }}>
                 PS Account
               </th>
-              <th className="py-4 text-right font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px', paddingLeft: '8px', paddingRight: '24px' }}>
+              <th className="py-4 text-right font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '12px', paddingLeft: '8px', paddingRight: '24px' }}>
                 Total $
               </th>
-              <th className="py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px', paddingLeft: '24px', paddingRight: '16px' }}>
+              <th className="py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '12px', paddingLeft: '24px', paddingRight: '16px' }}>
                 Assigned ISR
               </th>
-              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px' }}>
+              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '12px' }}>
                 Status
               </th>
-              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '11px' }}>
+              <th className="px-4 py-4 text-left font-medium uppercase tracking-widest text-[#6b7a85]" style={{ fontSize: '12px' }}>
                 Issues
               </th>
             </tr>
@@ -82,7 +82,7 @@ export function OrderTable({ orders }: { orders: Order[] }) {
                   <Link
                     href={`/orders/${order.id}`}
                     className="text-[#00A3E1] hover:text-[#008bc4] font-medium transition-colors"
-                    style={{ fontSize: '13px' }}
+                    style={{ fontSize: '14px' }}
                   >
                     {order.cust_order_number}
                   </Link>
@@ -110,38 +110,56 @@ export function OrderTable({ orders }: { orders: Order[] }) {
                 <td className="px-4 py-4 whitespace-nowrap text-[#333F48]" style={{ fontSize: '13px' }}>
                   {order.customer_name || order.customername || 'N/A'}
                 </td>
-              <td className="py-4 whitespace-nowrap text-[#6b7a85] font-mono" style={{ fontSize: '13px', paddingLeft: '16px', paddingRight: '8px', maxWidth: '120px' }}>
+              <td className="py-4 whitespace-nowrap text-[#6b7a85] font-mono" style={{ fontSize: '14px', paddingLeft: '16px', paddingRight: '8px', maxWidth: '120px' }}>
                 {order.ps_customer_id}
               </td>
-              <td className="py-4 whitespace-nowrap text-[#333F48] text-right font-medium" style={{ fontSize: '13px', paddingLeft: '8px', paddingRight: '24px' }}>
+              <td className="py-4 whitespace-nowrap text-[#333F48] text-right font-medium" style={{ fontSize: '14px', paddingLeft: '8px', paddingRight: '24px' }}>
                 {order.total_amount > 0
                   ? new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency_code || 'USD' }).format(order.total_amount)
                   : '—'}
               </td>
-              <td className="py-4 whitespace-nowrap text-[#333F48]" style={{ fontSize: '13px', paddingLeft: '24px', paddingRight: '16px' }}>
+              <td className="py-4 whitespace-nowrap text-[#333F48]" style={{ fontSize: '14px', paddingLeft: '24px', paddingRight: '16px' }}>
                 {order.csr_name || '—'}
               </td>
                 <td className="px-4 py-4 whitespace-nowrap">
                   <StatusBadge statusCode={order.status_code} statusName={order.status_name} />
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center" style={{ gap: '16px' }}>
                     {order.price_issues_count > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-sm bg-amber-50 border border-amber-200 px-2.5 py-1 font-medium text-amber-700" style={{ fontSize: '11px' }}>
-                        <AlertTriangle className="h-3 w-3" />
-                        {order.price_issues_count} price
+                      <span
+                        className="inline-flex items-center cursor-help"
+                        style={{ gap: '6px' }}
+                        title={`${order.price_issues_count} line item${order.price_issues_count > 1 ? 's have' : ' has'} price variance > 0.01% from customer pricing`}
+                      >
+                        <AlertTriangle className="h-4 w-4" style={{ color: '#d97706' }} />
+                        <span style={{ color: '#d97706', fontWeight: '700', fontSize: '13px' }}>
+                          {order.price_issues_count}
+                        </span>
                       </span>
                     )}
                     {order.invalid_items_count > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-sm bg-red-50 border border-red-200 px-2.5 py-1 font-medium text-red-700" style={{ fontSize: '11px' }}>
-                        <XCircle className="h-3 w-3" />
-                        {order.invalid_items_count} invalid
+                      <span
+                        className="inline-flex items-center cursor-help"
+                        style={{ gap: '6px' }}
+                        title={`${order.invalid_items_count} product${order.invalid_items_count > 1 ? 's are' : ' is'} not found in customer pricing catalog`}
+                      >
+                        <XCircle className="h-4 w-4" style={{ color: '#dc2626' }} />
+                        <span style={{ color: '#dc2626', fontWeight: '700', fontSize: '13px' }}>
+                          {order.invalid_items_count}
+                        </span>
                       </span>
                     )}
                     {order.price_issues_count === 0 && order.invalid_items_count === 0 && (
-                      <span className="inline-flex items-center gap-1 text-[#6b7a85]" style={{ fontSize: '11px' }}>
-                        <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                        No issues
+                      <span
+                        className="inline-flex items-center cursor-help"
+                        style={{ gap: '6px' }}
+                        title="All line items are valid and prices match customer pricing"
+                      >
+                        <CheckCircle className="h-4 w-4" style={{ color: '#16a34a' }} />
+                        <span style={{ color: '#6b7a85', fontSize: '11px' }}>
+                          No issues
+                        </span>
                       </span>
                     )}
                   </div>

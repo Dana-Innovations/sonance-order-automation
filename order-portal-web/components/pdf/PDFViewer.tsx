@@ -1,10 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, FileWarning, Loader2, FileText } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, FileWarning, Loader2, FileText, Target } from 'lucide-react'
 import { Document, Page, pdfjs } from 'react-pdf'
+import type { PDFDocumentProxy, PageViewport } from 'pdfjs-dist'
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css'
 import 'react-pdf/dist/esm/Page/TextLayer.css'
+import { usePDFHighlight } from '@/lib/contexts/PDFHighlightContext'
+import PDFHighlightOverlay from './PDFHighlightOverlay'
+import MagnifyingLens from './MagnifyingLens'
 
 // Set up PDF.js worker using unpkg (more reliable than cdnjs for newer versions)
 // Note: Using .mjs extension for modern ES modules
@@ -12,26 +16,20 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 
 export function PDFViewer({
   pdfUrl,
-  externalScale,
-  onScaleChange
 }: {
   pdfUrl: string | null;
-  externalScale?: number;
-  onScaleChange?: (delta: number) => void;
 }) {
   const [numPages, setNumPages] = useState<number | null>(null)
   const [pageNumber, setPageNumber] = useState(1)
-  const [scale, setScale] = useState(externalScale || 1.0)
+  const [scale, setScale] = useState(1.0)
   const [pdfData, setPdfData] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [pdfDocument, setPdfDocument] = useState<PDFDocumentProxy | null>(null)
+  const [viewport, setViewport] = useState<PageViewport | null>(null)
+  const pageCanvasRef = useRef<HTMLCanvasElement | null>(null)
 
-  // Sync external scale changes
-  useEffect(() => {
-    if (externalScale !== undefined) {
-      setScale(externalScale)
-    }
-  }, [externalScale])
+  const { isEnabled, mousePosition, setMousePosition, highlightMatches, setEnabled } = usePDFHighlight()
 
   useEffect(() => {
     let isMounted = true
@@ -90,9 +88,10 @@ export function PDFViewer({
     }
   }, [pdfUrl])
 
-  const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
-    setNumPages(numPages)
+  const onDocumentLoadSuccess = useCallback((pdf: PDFDocumentProxy) => {
+    setNumPages(pdf.numPages)
     setPageNumber(1) // Reset to first page when document loads
+    setPdfDocument(pdf)
   }, [])
 
   const onDocumentLoadError = useCallback((error: Error) => {
@@ -158,6 +157,43 @@ export function PDFViewer({
           <FileText className="h-4 w-4 text-[#00A3E1]" style={{ marginRight: '10px' }} />
           ORDER PDF
         </span>
+
+        {/* PDF Highlight Toggle - Centered */}
+        <button
+          onClick={() => setEnabled(!isEnabled)}
+          className="font-medium transition-colors"
+          style={{
+            border: '1px solid #00A3E1',
+            borderRadius: '20px',
+            backgroundColor: isEnabled ? '#00A3E1' : 'white',
+            color: isEnabled ? 'white' : '#00A3E1',
+            paddingTop: '5px',
+            paddingBottom: '5px',
+            paddingLeft: '14px',
+            paddingRight: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            fontSize: '10px'
+          }}
+          onMouseEnter={(e) => {
+            if (!isEnabled) {
+              e.currentTarget.style.backgroundColor = '#00A3E1'
+              e.currentTarget.style.color = 'white'
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isEnabled) {
+              e.currentTarget.style.backgroundColor = 'white'
+              e.currentTarget.style.color = '#00A3E1'
+            }
+          }}
+          title={isEnabled ? 'Disable PDF highlighting' : 'Enable PDF highlighting'}
+        >
+          <Target style={{ width: '12px', height: '12px' }} />
+          <span>Highlight {isEnabled ? 'ON' : 'OFF'}</span>
+        </button>
+
         <div className="flex items-center gap-4">
           {/* Pagination */}
           <div className="flex items-center gap-2">
@@ -185,13 +221,7 @@ export function PDFViewer({
           {/* Zoom */}
           <div className="flex items-center gap-2 border-l border-[#D9D9D6] pl-4">
             <button
-              onClick={() => {
-                if (onScaleChange) {
-                  onScaleChange(-0.1) // Smaller increment for smoother control
-                } else {
-                  setScale((s) => Math.max(0.5, s - 0.25))
-                }
-              }}
+              onClick={() => setScale((s) => Math.max(0.5, s - 0.1))}
               disabled={scale <= 0.5}
               className="h-7 w-7 rounded-sm border border-[#D9D9D6] bg-white flex items-center justify-center text-[#333F48] hover:bg-[#F5F5F5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               title="Zoom out"
@@ -202,13 +232,7 @@ export function PDFViewer({
               {Math.round(scale * 100)}%
             </span>
             <button
-              onClick={() => {
-                if (onScaleChange) {
-                  onScaleChange(0.1) // Smaller increment for smoother control
-                } else {
-                  setScale((s) => Math.min(2, s + 0.25))
-                }
-              }}
+              onClick={() => setScale((s) => Math.min(2, s + 0.1))}
               disabled={scale >= 2}
               className="h-7 w-7 rounded-sm border border-[#D9D9D6] bg-white flex items-center justify-center text-[#333F48] hover:bg-[#F5F5F5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               title="Zoom in"
@@ -239,16 +263,64 @@ export function PDFViewer({
               </div>
             }
           >
-            <Page
-              pageNumber={pageNumber}
-              scale={scale}
-              renderTextLayer={true}
-              renderAnnotationLayer={true}
-              className="shadow-lg"
-            />
+            <div
+              style={{ position: 'relative', display: 'inline-block' }}
+              onMouseMove={(e) => {
+                if (!isEnabled) return
+                const rect = e.currentTarget.getBoundingClientRect()
+                setMousePosition({
+                  x: e.clientX - rect.left,
+                  y: e.clientY - rect.top,
+                  pageX: e.pageX,
+                  pageY: e.pageY
+                })
+              }}
+              onMouseLeave={() => {
+                setMousePosition(null)
+              }}
+            >
+              <Page
+                pageNumber={pageNumber}
+                scale={scale}
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+                className="shadow-lg"
+                onLoadSuccess={(page) => {
+                  setViewport(page.getViewport({ scale }))
+                  // Capture the canvas reference for magnifying lens
+                  const canvas = document.querySelector('.react-pdf__Page__canvas') as HTMLCanvasElement
+                  if (canvas) {
+                    pageCanvasRef.current = canvas
+                  }
+                }}
+                canvasRef={(canvas) => {
+                  if (canvas) {
+                    pageCanvasRef.current = canvas
+                  }
+                }}
+              />
+              {pdfUrl && (
+                <PDFHighlightOverlay
+                  pageNumber={pageNumber}
+                  scale={scale}
+                  viewport={viewport}
+                  pdfDocument={pdfDocument}
+                  pdfUrl={pdfUrl}
+                />
+              )}
+            </div>
           </Document>
         </div>
       </div>
+
+      {/* Magnifying Lens */}
+      <MagnifyingLens
+        mousePosition={mousePosition}
+        highlightBox={highlightMatches.length > 0 ? highlightMatches[0] : null}
+        scale={scale}
+        sourceCanvas={pageCanvasRef.current}
+        isEnabled={isEnabled && highlightMatches.length > 0}
+      />
     </div>
   )
 }

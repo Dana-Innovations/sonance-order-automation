@@ -62,61 +62,77 @@ export function AuditLogModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-4xl max-h-[90vh] rounded-lg border border-border bg-card shadow-lg flex flex-col">
-        <div className="p-6 border-b border-border flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-card-foreground">Audit Log</h2>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+      <div className="rounded-lg shadow-lg flex flex-col" style={{ width: '900px', maxWidth: '90vw', maxHeight: '80vh', backgroundColor: 'white', border: '1px solid #00A3E1', position: 'relative', top: '-5vh' }}>
+        {/* Header */}
+        <div className="border-b border-gray-300 flex items-center justify-between" style={{ backgroundColor: 'white', paddingTop: '20px', paddingBottom: '20px', paddingLeft: '32px', paddingRight: '32px' }}>
+          <h2 className="font-semibold" style={{ color: '#666', fontSize: '14px' }}>Audit Log</h2>
           <div className="flex gap-2">
             <button
               onClick={handleExport}
-              className="px-4 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium hover:bg-muted/80"
+              className="font-medium transition-colors"
+              style={{
+                border: '1px solid #00A3E1',
+                borderRadius: '20px',
+                backgroundColor: 'white',
+                color: '#00A3E1',
+                paddingLeft: '16px',
+                paddingRight: '16px',
+                paddingTop: '4px',
+                paddingBottom: '4px',
+                fontSize: '9px',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#00A3E1'
+                e.currentTarget.style.color = 'white'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'white'
+                e.currentTarget.style.color = '#00A3E1'
+              }}
             >
               Export CSV
             </button>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-muted text-muted-foreground rounded-md text-sm font-medium hover:bg-muted/80"
-            >
-              Close
-            </button>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto" style={{ backgroundColor: 'white', padding: '32px' }}>
           {isLoading ? (
-            <div className="text-center text-muted-foreground">Loading audit log...</div>
+            <div className="text-center" style={{ color: '#666', fontSize: '12px' }}>Loading audit log...</div>
           ) : auditLogs && auditLogs.length > 0 ? (
             <div className="space-y-4">
               {auditLogs.map((log: any) => (
                 <div
                   key={log.id}
-                  className="border border-border rounded-md p-4 bg-muted/30"
+                  className="border border-gray-300 rounded-md p-4"
+                  style={{ backgroundColor: '#f9fafb' }}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-foreground">
+                    <span className="font-medium" style={{ fontSize: '12px', color: '#333' }}>
                       {format(new Date(log.created_at), 'MMM d, yyyy h:mm a')}
                     </span>
-                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 font-medium" style={{ fontSize: '10px', color: '#1e40af' }}>
                       {log.action_type}
                     </span>
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div style={{ fontSize: '11px', color: '#666' }}>
                     User: {log.user_email || 'Unknown'}
                   </div>
                   {log.field_name && (
-                    <div className="text-sm text-foreground mt-2">
+                    <div style={{ fontSize: '11px', color: '#333', marginTop: '8px' }}>
                       <span className="font-medium">Field:</span> {log.field_name}
                     </div>
                   )}
                   {(log.old_value || log.new_value) && (
-                    <div className="text-sm text-foreground mt-2">
+                    <div style={{ fontSize: '11px', color: '#333', marginTop: '8px' }}>
                       <span className="font-medium">Change:</span>{' '}
-                      <span className="text-red-600 line-through">{log.old_value || 'N/A'}</span>
+                      <span className="line-through" style={{ color: '#dc2626' }}>{log.old_value || 'N/A'}</span>
                       {' → '}
-                      <span className="text-green-600">{log.new_value || 'N/A'}</span>
+                      <span style={{ color: '#059669' }}>{log.new_value || 'N/A'}</span>
                     </div>
                   )}
                   {log.reason && (
-                    <div className="text-sm text-muted-foreground mt-2">
+                    <div style={{ fontSize: '11px', color: '#666', marginTop: '8px' }}>
                       <span className="font-medium">Reason:</span> {log.reason}
                     </div>
                   )}
@@ -124,8 +140,37 @@ export function AuditLogModal({
               ))}
             </div>
           ) : (
-            <div className="text-center text-muted-foreground">No audit log entries found</div>
+            <div className="text-center" style={{ color: '#666', fontSize: '12px' }}>No audit log entries found</div>
           )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-gray-300 flex justify-center" style={{ backgroundColor: 'white', paddingTop: '20px', paddingBottom: '20px' }}>
+          <button
+            onClick={onClose}
+            className="font-medium transition-colors"
+            style={{
+              border: '1px solid #00A3E1',
+              borderRadius: '20px',
+              backgroundColor: 'white',
+              color: '#00A3E1',
+              paddingLeft: '20px',
+              paddingRight: '20px',
+              paddingTop: '6px',
+              paddingBottom: '6px',
+              fontSize: '9px',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#00A3E1'
+              e.currentTarget.style.color = 'white'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'white'
+              e.currentTarget.style.color = '#00A3E1'
+            }}
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>

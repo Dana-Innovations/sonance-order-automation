@@ -68,41 +68,13 @@ export type Database = {
           },
         ]
       }
-      csr_assignments: {
-        Row: {
-          created_at: string | null
-          id: string
-          ps_customer_id: string
-          user_email: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          ps_customer_id: string
-          user_email: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          ps_customer_id?: string
-          user_email?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "csr_assignments_ps_customer_id_fkey"
-            columns: ["ps_customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["ps_customer_id"]
-          },
-        ]
-      }
       carriers: {
         Row: {
           carrier_id: string
           carrier_descr: string
           ship_via_code: string
           ship_via_desc: string
+          is_active: boolean
           created_at: string | null
           updated_at: string | null
         }
@@ -111,6 +83,7 @@ export type Database = {
           carrier_descr: string
           ship_via_code: string
           ship_via_desc: string
+          is_active?: boolean
           created_at?: string | null
           updated_at?: string | null
         }
@@ -119,6 +92,7 @@ export type Database = {
           carrier_descr?: string
           ship_via_code?: string
           ship_via_desc?: string
+          is_active?: boolean
           created_at?: string | null
           updated_at?: string | null
         }

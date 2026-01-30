@@ -85,7 +85,8 @@ export function WizardStep8({ session, onNext, isLoading }: WizardStepProps) {
             placeholder="Search by method name or code..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:border-[#00A3E1] focus:ring-2 focus:ring-[#00A3E1]/20 outline-none"
+            className="w-full border border-gray-300 focus:border-[#00A3E1] focus:ring-2 focus:ring-[#00A3E1]/20 outline-none"
+            style={{ paddingTop: '13px', paddingBottom: '13px', paddingLeft: '40px', paddingRight: '16px', fontSize: '16px', borderRadius: '12px' }}
           />
         </div>
       </div>

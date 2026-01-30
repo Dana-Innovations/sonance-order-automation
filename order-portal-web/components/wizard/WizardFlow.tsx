@@ -12,8 +12,11 @@ import { WizardStep4 } from './WizardStep4'
 import { WizardStep5 } from './WizardStep5'
 import { WizardStep6 } from './WizardStep6'
 import { WizardStep7 } from './WizardStep7'
-import { WizardStep8 } from './WizardStep8'
 import { WizardStep9 } from './WizardStep9'
+import { WizardStep10 } from './WizardStep10'
+import { WizardStep11 } from './WizardStep11'
+import { WizardStep12 } from './WizardStep12'
+import { WizardStep13 } from './WizardStep13'
 import { ArrowLeft, Save } from 'lucide-react'
 
 interface WizardFlowProps {
@@ -83,6 +86,17 @@ export function WizardFlow({ initialSession }: WizardFlowProps) {
     }
   }
 
+  const handleJumpToStep = async (stepNumber: number) => {
+    setIsLoading(true)
+    try {
+      await updateSession({ wizard_step: stepNumber })
+    } catch (error) {
+      console.error('Error jumping to step:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleSaveDraft = async () => {
     setIsLoading(true)
     try {
@@ -103,6 +117,7 @@ export function WizardFlow({ initialSession }: WizardFlowProps) {
       onNext: handleNext,
       onBack: handleBack,
       onSaveDraft: handleSaveDraft,
+      onJumpToStep: handleJumpToStep,
       isLoading
     }
 
@@ -127,9 +142,15 @@ export function WizardFlow({ initialSession }: WizardFlowProps) {
       case 7:
         return <WizardStep7 {...stepProps} />
       case 8:
-        return <WizardStep8 {...stepProps} />
-      case 9:
         return <WizardStep9 {...stepProps} />
+      case 9:
+        return <WizardStep10 {...stepProps} />
+      case 10:
+        return <WizardStep11 {...stepProps} />
+      case 11:
+        return <WizardStep12 {...stepProps} />
+      case 12:
+        return <WizardStep13 {...stepProps} />
       default:
         return (
           <div className="text-center py-12">
@@ -151,8 +172,8 @@ export function WizardFlow({ initialSession }: WizardFlowProps) {
         {renderStep()}
       </div>
 
-      {/* Navigation Footer (only show for steps > 0) */}
-      {session.wizard_step > 0 && (
+      {/* Navigation Footer (only show for steps > 0 and not step 9 which has its own footer) */}
+      {session.wizard_step > 0 && session.wizard_step !== 9 && (
         <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
           <button
             onClick={handleBack}

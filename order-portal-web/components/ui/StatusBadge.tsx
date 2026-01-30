@@ -2,23 +2,23 @@ import { cn } from '@/lib/utils'
 
 // Sonance-aligned status colors with subtle borders
 const statusStyles: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-  '01': { // Pending
-    bg: 'bg-slate-50',
-    text: 'text-slate-700',
-    border: 'border-slate-200',
-    dot: 'bg-slate-400'
-  },
-  '02': { // Under Review
+  '01': { // New
     bg: 'bg-sky-50',
     text: 'text-[#00A3E1]',
     border: 'border-sky-200',
     dot: 'bg-[#00A3E1]'
   },
-  '03': { // Validated
-    bg: 'bg-emerald-50',
-    text: 'text-emerald-700',
-    border: 'border-emerald-200',
-    dot: 'bg-emerald-500'
+  '02': { // Rev No Changes
+    bg: 'bg-sky-50',
+    text: 'text-[#00A3E1]',
+    border: 'border-sky-200',
+    dot: 'bg-[#00A3E1]'
+  },
+  '03': { // Rev W/ Changes
+    bg: 'bg-sky-50',
+    text: 'text-[#00A3E1]',
+    border: 'border-sky-200',
+    dot: 'bg-[#00A3E1]'
   },
   '04': { // Upload in Process
     bg: 'bg-orange-50',

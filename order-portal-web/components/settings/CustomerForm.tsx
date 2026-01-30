@@ -545,6 +545,9 @@ export function CustomerForm({
               placeholder="Enter SharePoint Folder ID"
               required
             />
+            <p className="text-xs text-[#6b7a85]" style={{ marginTop: '2px' }}>
+              Navigate to <a href="https://danainnovations.sharepoint.com/sites/SonanceOrderManagementAutomation/Shared%20Documents/Forms/AllItems.aspx" target="_blank" rel="noopener noreferrer" className="text-[#00A3E1] hover:underline">PDF Order Storage</a> to setup folder
+            </p>
           </div>
         </div>
 

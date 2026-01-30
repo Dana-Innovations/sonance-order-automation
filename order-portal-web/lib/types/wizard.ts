@@ -36,6 +36,18 @@ export interface CustomerData {
   // Copy tracking
   copied_from_customer_id?: string
   copied_from_customer_name?: string
+
+  // Sample PDFs (up to 5)
+  sample_pdfs?: Array<{
+    name: string
+    path: string
+    size: number
+  }>
+
+  // Generated AI Prompts
+  order_header_prompt?: string
+  order_line_prompt?: string
+  multi_account_prompt?: string
 }
 
 export interface ChildAccount {
@@ -61,6 +73,7 @@ export interface WizardStepProps {
   onNext: (data: Partial<CustomerData>, childAccounts?: ChildAccount[]) => Promise<void>
   onBack: () => void
   onSaveDraft: () => Promise<void>
+  onJumpToStep?: (stepNumber: number) => Promise<void>
   isLoading?: boolean
 }
 
