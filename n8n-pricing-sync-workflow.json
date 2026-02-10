@@ -1,0 +1,139 @@
+{
+  "name": "Nightly Customer Pricing Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 3
+            }
+          ]
+        }
+      },
+      "name": "Schedule - 3 AM Daily",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [250, 300],
+      "typeVersion": 1,
+      "id": "schedule-trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://YOUR_SERVER_HOST:3000/sync-pricing",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "name": "Trigger Pricing Sync",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 300],
+      "typeVersion": 4.2,
+      "id": "http-request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "Pricing Sync API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.success }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Check Success",
+      "type": "n8n-nodes-base.if",
+      "position": [650, 300],
+      "typeVersion": 2,
+      "id": "if-node"
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@yourdomain.com",
+        "toEmail": "ops@yourdomain.com",
+        "subject": "=✅ Pricing Sync Completed - {{ $json.recordsProcessed }} records",
+        "text": "=Pricing Sync Summary:\n\n• Status: {{ $json.status }}\n• Records Processed: {{ $json.recordsProcessed }}\n• Records Inserted/Updated: {{ $json.recordsInserted }}\n• Records Failed: {{ $json.recordsFailed }}\n• Duration: {{ Math.round($json.duration / 1000) }} seconds\n• Timestamp: {{ $now }}\n\nSync completed successfully.",
+        "options": {}
+      },
+      "name": "Email - Success",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [850, 200],
+      "typeVersion": 2.1,
+      "id": "email-success"
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@yourdomain.com",
+        "toEmail": "ops@yourdomain.com,it@yourdomain.com",
+        "subject": "🚨 ALERT: Pricing Sync Failed",
+        "text": "=PRICING SYNC FAILURE ALERT\n\nThe nightly customer pricing sync has failed and requires immediate attention.\n\nError Details:\n{{ $json.error }}\n\nRecords Processed: {{ $json.recordsProcessed }}\nRecords Failed: {{ $json.recordsFailed }}\nDuration: {{ Math.round($json.duration / 1000) }} seconds\nTimestamp: {{ $now }}\n\nPlease investigate the issue in the pricing_sync_log table and check the sync server logs.\n\nStack Trace:\n{{ $json.stack }}",
+        "options": {}
+      },
+      "name": "Email - Failure",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [850, 400],
+      "typeVersion": 2.1,
+      "id": "email-failure"
+    }
+  ],
+  "connections": {
+    "Schedule - 3 AM Daily": {
+      "main": [
+        [
+          {
+            "node": "Trigger Pricing Sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Pricing Sync": {
+      "main": [
+        [
+          {
+            "node": "Check Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Success": {
+      "main": [
+        [
+          {
+            "node": "Email - Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email - Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-02-09T00:00:00.000Z",
+  "versionId": "1"
+}
