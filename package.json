@@ -11,6 +11,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
     "@azure/identity": "^4.13.0",
+    "@danainnovations/feedback-widget": "^0.2.5",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/ssr": "^0.8.0",
