@@ -2,6 +2,26 @@ import { OrderList } from '@/components/orders/OrderList'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function OrdersPage() {
+  // In dev mode with DISABLE_AUTH, use a mock user email
+  if (process.env.DISABLE_AUTH === 'true') {
+    return (
+      <div className="space-y-4">
+        {/* Page Header */}
+        <div style={{ lineHeight: '1.2', marginLeft: '24px', marginTop: '0px', paddingTop: '4px' }}>
+          <h1 className="text-2xl font-light tracking-tight text-[#333F48]" style={{ margin: '0px' }}>
+            Orders
+          </h1>
+          <p className="text-sm text-[#6b7a85]" style={{ margin: '0px' }}>
+            Review, validate & edit new customer orders
+          </p>
+        </div>
+
+        {/* Order List with dev user */}
+        <OrderList userEmail="dev@sonance.com" />
+      </div>
+    )
+  }
+
   const supabase = await createClient()
   const {
     data: { user },
