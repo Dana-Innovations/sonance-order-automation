@@ -6,3 +6,15 @@ tmpclaude-*
 nul
 .DS_Store
 *.log
+
+# Claude AI assistant files
+.claude/
+
+# Supabase temp files
+supabase/.temp/
+
+# MCP test files
+mcp-test/
+
+# Test HTML files
+*.html
