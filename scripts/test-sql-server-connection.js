@@ -7,7 +7,7 @@
 
 const sql = require('mssql');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, 'order-portal-web', '.env.local') });
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 
 // SQL Server configuration
 const config = {
@@ -54,7 +54,7 @@ async function testConnection() {
   if (missing.length > 0) {
     console.error('❌ Missing required configuration:');
     missing.forEach(key => console.error(`   - ${key}`));
-    console.error('\nAdd these to order-portal-web/.env.local\n');
+    console.error('\nAdd these to .env.local\n');
     process.exit(1);
   }
 

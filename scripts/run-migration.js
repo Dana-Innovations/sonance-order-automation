@@ -3,7 +3,7 @@ const fs = require('fs')
 const path = require('path')
 
 // Load environment variables
-require('dotenv').config({ path: path.join(__dirname, 'order-portal-web', '.env.local') })
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') })
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -16,33 +16,35 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 async function runMigration() {
-  console.log('Running migration: 031_add_ps_supplier_id_to_order_lines.sql')
+  console.log('Running migration: 029_add_line_status_to_order_lines.sql')
 
   try {
     // Check if column already exists
-    const { data: columns, error } = await supabase
+    const { data: columns } = await supabase
       .from('order_lines')
-      .select('ps_supplier_id')
+      .select('line_status')
       .limit(1)
 
-    if (error && error.message.includes('column "ps_supplier_id" does not exist')) {
+    if (!columns || columns.error) {
       // Column doesn't exist, need to add it
-      console.log('Adding ps_supplier_id column to order_lines table...')
+      console.log('Adding line_status column to order_lines table...')
 
-      // Read the migration file
-      const migrationSQL = fs.readFileSync(
-        path.join(__dirname, 'supabase', 'migrations', '031_add_ps_supplier_id_to_order_lines.sql'),
-        'utf8'
-      )
-
+      // Unfortunately, Supabase JS client doesn't support DDL directly
+      // We need to use SQL Editor or pg library
       console.log('\nPlease run this SQL in your Supabase SQL Editor:')
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      console.log(migrationSQL)
+      console.log(`
+ALTER TABLE order_lines
+ADD COLUMN line_status VARCHAR(20) DEFAULT 'active';
+
+COMMENT ON COLUMN order_lines.line_status IS 'Status of the order line: active or cancelled';
+
+CREATE INDEX idx_order_lines_line_status ON order_lines(line_status);
+      `)
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
       console.log('\nOr visit: ' + supabaseUrl.replace('.supabase.co', '.supabase.co/project/_/sql'))
-      console.log('\nCopy the SQL above and paste it into the SQL Editor, then click "Run".')
     } else {
-      console.log('✓ ps_supplier_id column already exists!')
+      console.log('✓ line_status column already exists!')
     }
   } catch (error) {
     console.error('Error:', error.message)

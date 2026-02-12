@@ -1,27 +1,64 @@
-node_modules
-.env
-.env.local
-.env.*.local
-tmpclaude-*
-nul
+# dependencies
+node_modules/
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
 .DS_Store
+*.pem
+nul
+tmpclaude-*
+
+# debug
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+!.env.local.example
+!.env.pricing-sync.template
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
 
 # Claude AI assistant files
 .claude/
 
+# Cursor
+.cursor/
+
 # Supabase temp files
 supabase/.temp/
 
-# MCP test files
+# MCP
 mcp-test/
+.mcp.json
 
 # Test HTML files
 *.html
 
-# MCP config with secrets
-.mcp.json
-
 # Utility scripts with hardcoded secrets
-fix-cancelled-orders.js
-verify-migration-simple.js
+scripts/fix-cancelled-orders.js
+scripts/verify-migration-simple.js

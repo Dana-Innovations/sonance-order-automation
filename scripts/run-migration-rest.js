@@ -6,8 +6,8 @@ const https = require('https')
 const fs = require('fs')
 const path = require('path')
 
-// Try to load .env.local from order-portal-web directory
-const envPath = path.join(__dirname, 'order-portal-web', '.env.local')
+// Try to load .env.local from project root
+const envPath = path.join(__dirname, '..', '.env.local')
 require('dotenv').config({ path: envPath })
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL

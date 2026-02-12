@@ -3,7 +3,7 @@ const path = require('path')
 const https = require('https')
 
 // Load environment variables
-require('dotenv').config({ path: path.join(__dirname, 'order-portal-web', '.env.local') })
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') })
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY

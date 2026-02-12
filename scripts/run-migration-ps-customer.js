@@ -3,7 +3,7 @@ const fs = require('fs')
 const path = require('path')
 
 // Load environment variables
-require('dotenv').config({ path: path.join(__dirname, 'order-portal-web', '.env.local') })
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') })
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -16,33 +16,33 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 async function runMigration() {
-  console.log('Running migration: 037_add_is_active_to_carriers.sql')
+  console.log('Running migration: 032_add_ps_customer_id_to_order_lines.sql')
 
   try {
     // Check if column already exists
     const { data: columns, error } = await supabase
-      .from('carriers')
-      .select('is_active')
+      .from('order_lines')
+      .select('ps_customer_id')
       .limit(1)
 
-    if (error) {
+    if (error && error.message.includes('column "ps_customer_id" does not exist')) {
       // Column doesn't exist, need to add it
-      console.log('Adding is_active column to carriers table...')
+      console.log('Adding ps_customer_id column to order_lines table...')
+
+      // Read the migration file
+      const migrationSQL = fs.readFileSync(
+        path.join(__dirname, 'supabase', 'migrations', '032_add_ps_customer_id_to_order_lines.sql'),
+        'utf8'
+      )
 
       console.log('\nPlease run this SQL in your Supabase SQL Editor:')
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      console.log(`
--- Add is_active column to carriers table
-ALTER TABLE carriers
-ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT true;
-
--- Create index on is_active for better query performance
-CREATE INDEX idx_carriers_is_active ON carriers(is_active);
-      `)
+      console.log(migrationSQL)
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
       console.log('\nOr visit: ' + supabaseUrl.replace('.supabase.co', '.supabase.co/project/_/sql'))
+      console.log('\nCopy the SQL above and paste it into the SQL Editor, then click "Run".')
     } else {
-      console.log('✓ is_active column already exists!')
+      console.log('✓ ps_customer_id column already exists!')
     }
   } catch (error) {
     console.error('Error:', error.message)

@@ -6,7 +6,7 @@
 
 const { Client } = require('pg');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, 'order-portal-web', '.env.local') });
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const dbPassword = process.env.SUPABASE_DB_PASSWORD;

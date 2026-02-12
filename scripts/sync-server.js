@@ -14,7 +14,7 @@
 const express = require('express');
 const { syncPricing } = require('./sync-customer-pricing');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, 'order-portal-web', '.env.local') });
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 
 const app = express();
 const PORT = process.env.SYNC_SERVER_PORT || 3000;

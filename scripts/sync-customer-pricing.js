@@ -11,7 +11,7 @@
 const sql = require('mssql');
 const { Client } = require('pg');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, 'order-portal-web', '.env.local') });
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 
 // Configuration
 const BATCH_SIZE = parseInt(process.env.SYNC_BATCH_SIZE || '500');

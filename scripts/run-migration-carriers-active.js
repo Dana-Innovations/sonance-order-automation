@@ -3,7 +3,7 @@ const fs = require('fs')
 const path = require('path')
 
 // Load environment variables
-require('dotenv').config({ path: path.join(__dirname, 'order-portal-web', '.env.local') })
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') })
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -16,35 +16,33 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 async function runMigration() {
-  console.log('Running migration: 029_add_line_status_to_order_lines.sql')
+  console.log('Running migration: 037_add_is_active_to_carriers.sql')
 
   try {
     // Check if column already exists
-    const { data: columns } = await supabase
-      .from('order_lines')
-      .select('line_status')
+    const { data: columns, error } = await supabase
+      .from('carriers')
+      .select('is_active')
       .limit(1)
 
-    if (!columns || columns.error) {
+    if (error) {
       // Column doesn't exist, need to add it
-      console.log('Adding line_status column to order_lines table...')
+      console.log('Adding is_active column to carriers table...')
 
-      // Unfortunately, Supabase JS client doesn't support DDL directly
-      // We need to use SQL Editor or pg library
       console.log('\nPlease run this SQL in your Supabase SQL Editor:')
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
       console.log(`
-ALTER TABLE order_lines
-ADD COLUMN line_status VARCHAR(20) DEFAULT 'active';
+-- Add is_active column to carriers table
+ALTER TABLE carriers
+ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT true;
 
-COMMENT ON COLUMN order_lines.line_status IS 'Status of the order line: active or cancelled';
-
-CREATE INDEX idx_order_lines_line_status ON order_lines(line_status);
+-- Create index on is_active for better query performance
+CREATE INDEX idx_carriers_is_active ON carriers(is_active);
       `)
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
       console.log('\nOr visit: ' + supabaseUrl.replace('.supabase.co', '.supabase.co/project/_/sql'))
     } else {
-      console.log('✓ line_status column already exists!')
+      console.log('✓ is_active column already exists!')
     }
   } catch (error) {
     console.error('Error:', error.message)

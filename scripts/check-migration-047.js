@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js')
-require('dotenv').config({ path: './order-portal-web/.env.local' })
+const path = require('path')
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') })
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
