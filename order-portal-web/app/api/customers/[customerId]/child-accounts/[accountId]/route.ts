@@ -27,12 +27,12 @@ export async function PATCH(
       )
     }
 
-    // Verify ownership
+    // Verify ownership (customerId is now the UUID)
     const { data: existingAccount, error: fetchError } = await supabase
       .from('customer_child_accounts')
       .select('*')
       .eq('id', accountId)
-      .eq('parent_ps_customer_id', customerId)
+      .eq('parent_customer_id', customerId)
       .single()
 
     if (fetchError || !existingAccount) {
@@ -58,13 +58,13 @@ export async function PATCH(
       // Check if account ID is already used as a child account
       const { data: duplicateChild } = await supabase
         .from('customer_child_accounts')
-        .select('id, parent_ps_customer_id')
+        .select('id, parent_customer_id')
         .eq('child_ps_account_id', child_ps_account_id)
         .maybeSingle()
 
       if (duplicateChild) {
         return NextResponse.json(
-          { error: `Account ID "${child_ps_account_id}" is already used as a child account of parent: ${duplicateChild.parent_ps_customer_id}` },
+          { error: `Account ID "${child_ps_account_id}" is already used as a child account` },
           { status: 409 }
         )
       }
@@ -79,7 +79,7 @@ export async function PATCH(
       .from('customer_child_accounts')
       .update(updateData)
       .eq('id', accountId)
-      .eq('parent_ps_customer_id', customerId)
+      .eq('parent_customer_id', customerId)
       .select()
       .single()
 
@@ -116,12 +116,12 @@ export async function DELETE(
 
     const { customerId, accountId } = await params
 
-    // Verify ownership
+    // Verify ownership (customerId is now the UUID)
     const { data: existingAccount, error: fetchError } = await supabase
       .from('customer_child_accounts')
       .select('*')
       .eq('id', accountId)
-      .eq('parent_ps_customer_id', customerId)
+      .eq('parent_customer_id', customerId)
       .single()
 
     if (fetchError || !existingAccount) {
@@ -132,7 +132,7 @@ export async function DELETE(
     const { data: allAccounts, error: countError } = await supabase
       .from('customer_child_accounts')
       .select('id')
-      .eq('parent_ps_customer_id', customerId)
+      .eq('parent_customer_id', customerId)
 
     if (countError) {
       return NextResponse.json({ error: countError.message }, { status: 500 })
@@ -159,7 +159,7 @@ export async function DELETE(
       .from('customer_child_accounts')
       .delete()
       .eq('id', accountId)
-      .eq('parent_ps_customer_id', customerId)
+      .eq('parent_customer_id', customerId)
 
     if (deleteError) {
       console.error('Error deleting child account:', deleteError)

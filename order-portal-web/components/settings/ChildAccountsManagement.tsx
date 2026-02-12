@@ -7,7 +7,7 @@ import { Trash2, Edit, Plus } from 'lucide-react'
 
 interface ChildAccount {
   id: string
-  parent_ps_customer_id: string
+  parent_customer_id: string
   child_ps_account_id: string
   routing_description: string
   ai_mapping_instructions: string | null

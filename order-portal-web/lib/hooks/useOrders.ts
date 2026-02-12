@@ -38,7 +38,7 @@ export function useOrders({
       // Get customers assigned to this CSR (using csr_id on customers table)
       const { data: customers } = await supabase
         .from('customers')
-        .select('ps_customer_id')
+        .select('customer_id, ps_customer_id')
         .eq('csr_id', userEmail)
 
       if (!customers || customers.length === 0) {
@@ -46,12 +46,13 @@ export function useOrders({
       }
 
       const customerIds = customers.map((c) => c.ps_customer_id)
+      const customerUuids = customers.map((c) => c.customer_id)
 
       // For multi-account customers, also get child account IDs
       const { data: childAccounts } = await supabase
         .from('customer_child_accounts')
         .select('child_ps_account_id')
-        .in('parent_ps_customer_id', customerIds)
+        .in('parent_customer_id', customerUuids)
 
       // Combine parent and child account IDs
       const allAccountIds = [
@@ -126,7 +127,7 @@ export function useOrders({
           // If not found, check if it's a child account
           const { data: childAccount } = await supabase
             .from('customer_child_accounts')
-            .select('parent_ps_customer_id')
+            .select('parent_customer_id')
             .eq('child_ps_account_id', order.ps_customer_id)
             .maybeSingle()
 
@@ -135,7 +136,7 @@ export function useOrders({
             const { data: parentCustomer } = await supabase
               .from('customers')
               .select('customer_name')
-              .eq('ps_customer_id', childAccount.parent_ps_customer_id)
+              .eq('customer_id', childAccount.parent_customer_id)
               .maybeSingle()
 
             if (parentCustomer) {

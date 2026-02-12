@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     // If multi-account, insert child accounts
     if (customerData.is_multi_account && childAccounts.length > 0) {
       const childAccountRecords = childAccounts.map((account: any, index: number) => ({
-        parent_ps_customer_id: 'MULTI',
+        parent_customer_id: customer.customer_id,
         child_ps_account_id: account.ps_account_id,
         routing_description: account.routing_description,
         display_order: index + 1

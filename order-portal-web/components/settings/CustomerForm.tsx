@@ -655,9 +655,9 @@ export function CustomerForm({
         </div>
 
         {/* Child Accounts Management - Show for multi-account customers */}
-        {isMultiAccount && mode === 'edit' && formData.ps_customer_id === 'MULTI' && (
+        {isMultiAccount && mode === 'edit' && formData.ps_customer_id === 'MULTI' && customer && (
           <ChildAccountsManagement
-            customerId="MULTI"
+            customerId={customer.customer_id}
             isEditMode={mode === 'edit'}
           />
         )}

@@ -17,11 +17,11 @@ export async function GET(
 
     const { customerId } = await params
 
-    // Fetch child accounts
+    // Fetch child accounts (customerId is now the UUID)
     const { data: childAccounts, error } = await supabase
       .from('customer_child_accounts')
       .select('*')
-      .eq('parent_ps_customer_id', customerId)
+      .eq('parent_customer_id', customerId)
       .order('display_order', { ascending: true })
 
     if (error) {
@@ -69,11 +69,11 @@ export async function POST(
       )
     }
 
-    // Verify customer exists
+    // Verify customer exists (customerId is now the UUID)
     const { data: customer, error: customerError } = await supabase
       .from('customers')
-      .select('ps_customer_id, customer_name')
-      .eq('ps_customer_id', customerId)
+      .select('customer_id, ps_customer_id, customer_name')
+      .eq('customer_id', customerId)
       .maybeSingle()
 
     if (customerError) {
@@ -82,7 +82,7 @@ export async function POST(
     }
 
     if (!customer) {
-      console.error(`Parent customer not found with ps_customer_id: ${customerId}`)
+      console.error(`Parent customer not found with id: ${customerId}`)
       return NextResponse.json({
         error: `Parent customer with ID "${customerId}" not found. Please ensure the parent customer is saved first.`
       }, { status: 404 })
@@ -105,13 +105,13 @@ export async function POST(
     // Check if account ID is already used as a child account
     const { data: existingChild } = await supabase
       .from('customer_child_accounts')
-      .select('id, parent_ps_customer_id')
+      .select('id, parent_customer_id')
       .eq('child_ps_account_id', child_ps_account_id)
       .maybeSingle()
 
     if (existingChild) {
       return NextResponse.json(
-        { error: `Account ID "${child_ps_account_id}" is already used as a child account of parent: ${existingChild.parent_ps_customer_id}` },
+        { error: `Account ID "${child_ps_account_id}" is already used as a child account` },
         { status: 409 }
       )
     }
@@ -120,7 +120,7 @@ export async function POST(
     const { data: maxOrder } = await supabase
       .from('customer_child_accounts')
       .select('display_order')
-      .eq('parent_ps_customer_id', customerId)
+      .eq('parent_customer_id', customerId)
       .order('display_order', { ascending: false })
       .limit(1)
       .single()
@@ -131,7 +131,7 @@ export async function POST(
     const { data: newAccount, error: insertError } = await supabase
       .from('customer_child_accounts')
       .insert({
-        parent_ps_customer_id: customerId,
+        parent_customer_id: customerId,
         child_ps_account_id,
         routing_description,
         display_order: nextOrder,
