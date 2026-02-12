@@ -10,13 +10,28 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const disableAuth = process.env.DISABLE_AUTH === 'true'
 
-  if (!user) {
-    redirect('/login')
+  let user
+
+  if (disableAuth) {
+    // Mock user for development when auth is disabled
+    user = {
+      id: 'dev-user',
+      email: 'dev@sonance.com',
+    } as any
+  } else {
+    // Normal authentication flow
+    const supabase = await createClient()
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser()
+
+    if (!authUser) {
+      redirect('/login')
+    }
+
+    user = authUser
   }
 
   return (
