@@ -50,7 +50,7 @@ export default async function OrderDetailPage({
 
   const enrichedOrder = {
     ...order,
-    customers: customer,
+    customers: customer!,
     order_statuses: status,
     order_lines: orderLines || [],
   }
