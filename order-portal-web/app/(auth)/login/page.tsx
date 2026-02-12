@@ -119,7 +119,7 @@ export default function LoginPage() {
             <h1 style={{
               fontSize: '2.5rem',
               fontWeight: 300,
-              color: 'red',
+              color: 'white',
               lineHeight: 1.2,
               letterSpacing: '-0.02em',
               marginBottom: '24px',
