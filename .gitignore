@@ -18,3 +18,10 @@ mcp-test/
 
 # Test HTML files
 *.html
+
+# MCP config with secrets
+.mcp.json
+
+# Utility scripts with hardcoded secrets
+fix-cancelled-orders.js
+verify-migration-simple.js
