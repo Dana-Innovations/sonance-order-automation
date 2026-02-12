@@ -35,8 +35,8 @@ export default async function WizardSessionPage({ params }: WizardPageProps) {
 
   // Get current step from session
   const currentStep = session.wizard_step || 0
-  // Calculate total steps: 10 customer info steps (0-9) + 10-15 voice questions depending on multi-account
-  const totalSteps = session.customer_data?.is_multi_account ? 30 : 25
+  // Total steps: 0-15 (16 steps) - routing questions/prompt for multi-account can be added later
+  const totalSteps = 16
 
   return (
     <div className="min-h-screen bg-gray-50">

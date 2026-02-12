@@ -25,7 +25,8 @@ export default function PDFHighlightOverlay({
     activeHighlight,
     findTextMatches,
     setPDFTextData,
-    debugMessage
+    debugMessage,
+    setHighlightMatches
   } = usePDFHighlight();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -56,23 +57,38 @@ export default function PDFHighlightOverlay({
 
   // Find and highlight matches when activeHighlight changes
   useEffect(() => {
+    console.log('[PDFHighlightOverlay] useEffect triggered', {
+      isEnabled,
+      hasActiveHighlight: !!activeHighlight,
+      hasViewport: !!viewport,
+      activeHighlight
+    });
+
     if (!isEnabled || !activeHighlight || !viewport) {
+      console.log('[PDFHighlightOverlay] Clearing matches - not ready');
       setMatches([]);
+      setHighlightMatches([]);
       return;
     }
 
     const foundMatches = findTextMatches(activeHighlight, pdfUrl, pageNumber);
+    console.log('[PDFHighlightOverlay] Found matches:', foundMatches.length, foundMatches);
 
     // Scale coordinates to current viewport and expand boxes in all directions
     const scaledMatches = foundMatches.map(match => ({
       x: (match.x * scale) - 3, // Expand left by 3pt
       y: (match.y * scale) - 5, // Expand up by 5pt (includes alignment adjustment)
       width: (match.width * scale || 50) + 6, // Expand width by 6pt (3 on each side)
-      height: (match.height * scale) + 10 // Expand height by 10pt (5 on each side)
+      height: (match.height * scale) + 10, // Expand height by 10pt (5 on each side)
+      text: match.text
     }));
 
+    console.log('[PDFHighlightOverlay] Scaled matches:', scaledMatches);
     setMatches(scaledMatches);
-  }, [isEnabled, activeHighlight, viewport, scale, findTextMatches, pdfUrl, pageNumber]);
+    // Also update context so magnifying lens can use the scaled coordinates
+    setHighlightMatches(scaledMatches);
+    console.log('[PDFHighlightOverlay] Called setHighlightMatches with', scaledMatches.length, 'matches');
+  }, [isEnabled, activeHighlight, viewport, scale, findTextMatches, pdfUrl, pageNumber, setHighlightMatches]);
 
   // Draw highlights on canvas
   useEffect(() => {
@@ -120,7 +136,7 @@ export default function PDFHighlightOverlay({
           opacity: matches.length > 0 ? 1 : 0
         }}
       />
-      {debugMessage && (
+      {false && debugMessage && (
         <div
           style={{
             position: 'absolute',

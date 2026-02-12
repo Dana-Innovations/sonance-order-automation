@@ -31,6 +31,7 @@ interface HighlightConfig {
   lineNumber?: number;
   context: string;
   columnHint?: 'left' | 'center' | 'right'; // Optional column position hint
+  productId?: string; // Product SKU to use as anchor when line numbers aren't available
 }
 
 interface MousePosition {
@@ -61,6 +62,7 @@ interface PDFHighlightContextType {
   setMousePosition: (position: MousePosition | null) => void;
   setPDFTextData: (pdfUrl: string, pageNumber: number, data: PageTextData) => void;
   findTextMatches: (config: HighlightConfig, pdfUrl: string, pageNumber: number) => HighlightMatch[];
+  setHighlightMatches: (matches: HighlightMatch[]) => void;
 }
 
 const PDFHighlightContext = createContext<PDFHighlightContextType | undefined>(undefined);
@@ -135,7 +137,42 @@ export function PDFHighlightProvider({ children }: { children: React.ReactNode }
           item.y < rowRegion.y + rowRegion.height
         );
       } else {
-        console.warn(`[PDF] No row region for line ${config.lineNumber}`);
+        console.warn(`[PDF] No row region for line ${config.lineNumber}, trying product ID anchor`);
+        // Fallback: Use product ID as anchor if available
+        if (config.productId) {
+          const productAnchor = filteredItems.find(item =>
+            item.text.trim() === config.productId?.trim()
+          );
+          if (productAnchor) {
+            // Define row region around product (±30px vertical tolerance)
+            const rowY = productAnchor.y - 5;
+            const rowHeight = 30;
+            filteredItems = filteredItems.filter(item =>
+              item.y >= rowY &&
+              item.y < rowY + rowHeight
+            );
+            console.log(`[PDF] Using product "${config.productId}" as anchor at Y=${productAnchor.y.toFixed(1)}`);
+          } else {
+            console.warn(`[PDF] Product ID "${config.productId}" not found in PDF`);
+          }
+        }
+      }
+    } else if (config.fieldType === 'line_item' && config.productId && !config.lineNumber) {
+      // No line number provided, but we have product ID - use it as anchor
+      const productAnchor = filteredItems.find(item =>
+        item.text.trim() === config.productId?.trim()
+      );
+      if (productAnchor) {
+        // Define row region around product (±30px vertical tolerance)
+        const rowY = productAnchor.y - 5;
+        const rowHeight = 30;
+        filteredItems = filteredItems.filter(item =>
+          item.y >= rowY &&
+          item.y < rowY + rowHeight
+        );
+        console.log(`[PDF] Using product "${config.productId}" as anchor at Y=${productAnchor.y.toFixed(1)}`);
+      } else {
+        console.warn(`[PDF] Product ID "${config.productId}" not found in PDF`);
       }
     } else if (config.fieldType === 'shipto_address' && pageData.shipToRegion) {
       const region = pageData.shipToRegion;
@@ -316,6 +353,41 @@ export function PDFHighlightProvider({ children }: { children: React.ReactNode }
     // Clear debug message when match found
     setDebugMessage(null);
 
+    // Special handling for unit price vs line total when qty = 1
+    // Unit price should be the first price to the right of quantity
+    // Line total should be the rightmost price
+    if ((config.fieldName === 'cust_unit_price' || config.fieldName === 'cust_line_total') && candidates.length > 1) {
+      // Find the quantity position in this row to use as reference
+      const qtyPattern = /^\d+(\.\d+)?$/; // Match numbers (quantity)
+      const qtyItem = filteredItems.find(item => qtyPattern.test(item.text.trim()));
+
+      if (qtyItem) {
+        if (config.fieldName === 'cust_unit_price') {
+          // Unit price: Find the leftmost price that's to the right of quantity
+          const pricesRightOfQty = candidates.filter(c => c.x > qtyItem.x);
+          if (pricesRightOfQty.length > 0) {
+            // Sort by X position and take the leftmost (closest to quantity)
+            const leftmost = pricesRightOfQty.reduce((closest, current) =>
+              current.x < closest.x ? current : closest
+            );
+            console.log(`[PDF] Unit price: Using leftmost price at X=${leftmost.x.toFixed(1)} (qty at X=${qtyItem.x.toFixed(1)})`);
+            return [leftmost];
+          }
+        } else if (config.fieldName === 'cust_line_total') {
+          // Line total: Find the rightmost price that's to the right of quantity
+          const pricesRightOfQty = candidates.filter(c => c.x > qtyItem.x);
+          if (pricesRightOfQty.length > 0) {
+            // Sort by X position and take the rightmost
+            const rightmost = pricesRightOfQty.reduce((farthest, current) =>
+              current.x > farthest.x ? current : farthest
+            );
+            console.log(`[PDF] Line total: Using rightmost price at X=${rightmost.x.toFixed(1)} (qty at X=${qtyItem.x.toFixed(1)})`);
+            return [rightmost];
+          }
+        }
+      }
+    }
+
     // If we have a column hint and multiple matches, filter by column position
     if (config.columnHint && candidates.length > 1) {
       const pageWidth = 800; // Approximate PDF page width
@@ -354,7 +426,8 @@ export function PDFHighlightProvider({ children }: { children: React.ReactNode }
     clearHighlight,
     setMousePosition,
     setPDFTextData,
-    findTextMatches
+    findTextMatches,
+    setHighlightMatches
   };
 
   return (

@@ -288,14 +288,20 @@ export function PDFViewer({
                 onLoadSuccess={(page) => {
                   setViewport(page.getViewport({ scale }))
                   // Capture the canvas reference for magnifying lens
-                  const canvas = document.querySelector('.react-pdf__Page__canvas') as HTMLCanvasElement
-                  if (canvas) {
-                    pageCanvasRef.current = canvas
-                  }
+                  setTimeout(() => {
+                    const canvas = document.querySelector('.react-pdf__Page__canvas') as HTMLCanvasElement
+                    if (canvas) {
+                      pageCanvasRef.current = canvas
+                      console.log('[PDFViewer] Canvas captured:', canvas.width, 'x', canvas.height)
+                    } else {
+                      console.warn('[PDFViewer] Canvas not found')
+                    }
+                  }, 100)
                 }}
                 canvasRef={(canvas) => {
                   if (canvas) {
                     pageCanvasRef.current = canvas
+                    console.log('[PDFViewer] Canvas ref set:', canvas.width, 'x', canvas.height)
                   }
                 }}
               />
@@ -312,6 +318,38 @@ export function PDFViewer({
           </Document>
         </div>
       </div>
+
+      {/* Debug info for magnifying lens - disabled */}
+      {false && isEnabled && (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          backgroundColor: '#1e293b',
+          color: '#22d3ee',
+          padding: '8px 12px',
+          borderRadius: '4px',
+          fontFamily: 'monospace',
+          fontSize: '10px',
+          zIndex: 9999,
+          border: '1px solid #22d3ee',
+          maxWidth: '400px',
+          lineHeight: '1.5',
+          whiteSpace: 'pre-wrap'
+        }}>
+          {`PDFViewer Debug:
+Matches: ${highlightMatches.length}
+Canvas: ${pageCanvasRef.current ? `${pageCanvasRef.current.width}x${pageCanvasRef.current.height}` : 'NO'}
+Scale: ${scale}
+${highlightMatches.length > 0 ? `
+Highlight Box:
+  X: ${highlightMatches[0].x.toFixed(1)}
+  Y: ${highlightMatches[0].y.toFixed(1)}
+  Width: ${highlightMatches[0].width.toFixed(1)}
+  Height: ${highlightMatches[0].height.toFixed(1)}
+  Text: "${highlightMatches[0].text}"` : ''}`}
+        </div>
+      )}
 
       {/* Magnifying Lens */}
       <MagnifyingLens

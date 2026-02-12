@@ -1,0 +1,82 @@
+{
+  "description": "Add these 3 nodes between 'Split Order Lines' and 'Insert Order Line'",
+  "newNodes": [
+    {
+      "parameters": {
+        "jsCode": "// Add PS_Customer_ID to each line item for lookup\nconst lineItem = $input.item.json;\nconst psCustomerId = $node[\"AI Agent: Extract Order Data\"].json.output.PS_Customer_ID;\n\n// Enrich line item with header context\nlineItem.ps_customer_id = psCustomerId;\n\nreturn { json: lineItem };"
+      },
+      "id": "add-header-context",
+      "name": "Add Header Context to Line",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3650, 288]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "customer_product_mappings",
+        "limit": 1,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "ps_customer_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.ps_customer_id }}"
+            },
+            {
+              "keyName": "cust_product_sku",
+              "condition": "eq",
+              "keyValue": "={{ $json.custproductsku }}"
+            }
+          ]
+        }
+      },
+      "id": "lookup-product-mapping",
+      "name": "Lookup Product Mapping",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [3760, 288],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "ck634X9GDWz9U54I",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Apply product mapping if found and sonanceProductOrig is null/empty\nconst lineItem = $node[\"Add Header Context to Line\"].json;\nconst lookupResults = $input.all();\n\n// Check if we got a mapping result\nconst mapping = (lookupResults.length > 0 && lookupResults[0].json) ? lookupResults[0].json : null;\n\n// Check if sonanceProductOrig is null/empty\nconst sonanceSkuEmpty = !lineItem.sonanceProductOrig || lineItem.sonanceProductOrig.trim() === \"\";\n\nif (sonanceSkuEmpty && mapping && mapping.sonance_product_sku) {\n  // Update with mapped value from customer_product_mappings table\n  lineItem.sonanceProductOrig = mapping.sonance_product_sku;\n  lineItem.mappingSource = \"customer_product_mappings\";\n  lineItem.mappingConfidence = mapping.confidence_score || 1.0;\n  lineItem.mappingTimesUsed = mapping.times_used || 0;\n} else {\n  // Keep original value (could be from AI extraction or still null)\n  lineItem.mappingSource = sonanceSkuEmpty ? \"none\" : \"ai_extraction\";\n}\n\n// Remove temporary ps_customer_id field\ndelete lineItem.ps_customer_id;\n\nreturn { json: lineItem };"
+      },
+      "id": "apply-product-mapping",
+      "name": "Apply Product Mapping",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3900, 288]
+    }
+  ],
+  "connectionChanges": {
+    "description": "Update these connections in the workflow",
+    "remove": {
+      "Split Order Lines": {
+        "old_target": "Insert Order Line"
+      }
+    },
+    "add": {
+      "Split Order Lines": {
+        "main": [[{"node": "Add Header Context to Line", "type": "main", "index": 0}]]
+      },
+      "Add Header Context to Line": {
+        "main": [[{"node": "Lookup Product Mapping", "type": "main", "index": 0}]]
+      },
+      "Lookup Product Mapping": {
+        "main": [[{"node": "Apply Product Mapping", "type": "main", "index": 0}]]
+      },
+      "Apply Product Mapping": {
+        "main": [[{"node": "Insert Order Line", "type": "main", "index": 0}]]
+      }
+    }
+  },
+  "instructions": "These nodes add validation logic to look up missing Sonance SKUs from the customer_product_mappings table before inserting order lines into Supabase."
+}

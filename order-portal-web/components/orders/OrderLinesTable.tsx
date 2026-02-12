@@ -37,7 +37,7 @@ export function OrderLinesTable({
   const isImportSuccessful = order.status_code === '05'
   const isUploadInProcess = order.status_code === '04'
   const canEdit = !isCancelled && !isImportSuccessful && !isUploadInProcess
-  const { isEnabled: isPDFHighlightEnabled, setHighlight, clearHighlight } = usePDFHighlight()
+  const { isEnabled: isPDFHighlightEnabled, setHighlight, clearHighlight, highlightMatches } = usePDFHighlight()
 
   // Local state for sonance prices (to show updated values after lookup)
   const [sonancePrices, setSonancePrices] = useState<Record<string, number | null>>({})
@@ -79,6 +79,10 @@ export function OrderLinesTable({
   // Track which line is being cancelled (for confirmation modal)
   const [cancellingLine, setCancellingLine] = useState<OrderLine | null>(null)
   const [isCancelling, setIsCancelling] = useState(false)
+
+  // Debug popup state
+  const [debugInfo, setDebugInfo] = useState<string | null>(null)
+  const [debugPosition, setDebugPosition] = useState<{ x: number; y: number } | null>(null)
 
   const handleCancelLine = async (line: OrderLine) => {
     if (!cancellingLine) return
@@ -727,6 +731,7 @@ export function OrderLinesTable({
                         fieldName: 'cust_product_sku',
                         value: line.cust_product_sku,
                         lineNumber: line.cust_line_number || undefined,
+                        productId: line.cust_product_sku || undefined,
                         context: `Line ${line.cust_line_number || line.id}`,
                         columnHint: 'left' // SKU is typically in left columns
                       })
@@ -907,11 +912,20 @@ export function OrderLinesTable({
                             const isManuallyAdded = !line.cust_line_number
 
                             if (isPDFHighlightEnabled && custQty != null && !isLineCancelled && !isManuallyAdded) {
+                              // Delay to let highlight matches update
+                              setTimeout(() => {
+                                const debugMsg = `[HOVER QTY]\nValue: ${custQty}\nProduct: ${line.cust_product_sku}\nLine#: ${line.cust_line_number || 'none'}\nPDF Highlight: ${isPDFHighlightEnabled ? 'ON' : 'OFF'}\nHighlight Matches: ${highlightMatches.length}\n${highlightMatches.length > 0 ? `Match at X=${highlightMatches[0].x.toFixed(1)}, Y=${highlightMatches[0].y.toFixed(1)}` : 'No matches'}`;
+                                console.log(debugMsg);
+                                setDebugInfo(debugMsg);
+                                setDebugPosition({ x: e.clientX, y: e.clientY });
+                              }, 100);
+
                               setHighlight({
                                 fieldType: 'line_item',
                                 fieldName: 'cust_quantity',
                                 value: custQty,
                                 lineNumber: line.cust_line_number || undefined,
+                                productId: line.cust_product_sku || undefined,
                                 context: `Line ${line.cust_line_number || line.id}`,
                                 columnHint: 'center' // Quantity is typically in center columns
                               })
@@ -921,6 +935,8 @@ export function OrderLinesTable({
                           onMouseLeave={(e) => {
                             setHoveredQtyLineId(null)
                             setQtyTooltipPosition(null)
+                            setDebugInfo(null)
+                            setDebugPosition(null)
 
                             // Clear PDF highlight
                             if (isPDFHighlightEnabled) {
@@ -1013,6 +1029,7 @@ export function OrderLinesTable({
                                 fieldName: 'cust_uom',
                                 value: custUom,
                                 lineNumber: line.cust_line_number || undefined,
+                                productId: line.cust_product_sku || undefined,
                                 context: `Line ${line.cust_line_number || line.id}`,
                                 columnHint: 'center' // UOM is typically in center columns
                               })
@@ -1099,6 +1116,7 @@ export function OrderLinesTable({
                         fieldName: 'cust_unit_price',
                         value: formatCurrency(line.cust_unit_price),
                         lineNumber: line.cust_line_number || undefined,
+                        productId: line.cust_product_sku || undefined,
                         context: `Line ${line.cust_line_number || line.id}`,
                         columnHint: 'right' // Price is typically in right columns
                       })
@@ -1239,6 +1257,7 @@ export function OrderLinesTable({
                         fieldName: 'cust_line_total',
                         value: formatCurrency(line.cust_line_total),
                         lineNumber: line.cust_line_number || undefined,
+                        productId: line.cust_product_sku || undefined,
                         context: `Line ${line.cust_line_number || line.id}`,
                         columnHint: 'right' // Total is typically in right columns
                       })
@@ -1459,6 +1478,32 @@ export function OrderLinesTable({
             </button>
           </div>
         </div>
+      </div>
+    )}
+
+    {/* Debug Popup - disabled */}
+    {false && debugInfo && debugPosition && (
+      <div
+        style={{
+          position: 'fixed',
+          left: `${debugPosition.x + 20}px`,
+          top: `${debugPosition.y + 20}px`,
+          backgroundColor: '#1e293b',
+          color: '#22d3ee',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          lineHeight: '1.6',
+          whiteSpace: 'pre-wrap',
+          zIndex: 99999,
+          border: '2px solid #22d3ee',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+          maxWidth: '400px',
+          pointerEvents: 'none'
+        }}
+      >
+        {debugInfo}
       </div>
     )}
   </>

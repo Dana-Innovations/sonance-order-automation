@@ -39,3 +39,17 @@ COMMENT ON COLUMN customer_product_mappings.times_used IS 'Number of times this 
 COMMENT ON COLUMN customer_product_mappings.created_by_order_id IS 'The order ID that first created this mapping';
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -17,6 +17,9 @@ import { WizardStep10 } from './WizardStep10'
 import { WizardStep11 } from './WizardStep11'
 import { WizardStep12 } from './WizardStep12'
 import { WizardStep13 } from './WizardStep13'
+import { WizardStep14 } from './WizardStep14'
+import { WizardStep15 } from './WizardStep15'
+import { WizardStep16 } from './WizardStep16'
 import { ArrowLeft, Save } from 'lucide-react'
 
 interface WizardFlowProps {
@@ -151,6 +154,12 @@ export function WizardFlow({ initialSession }: WizardFlowProps) {
         return <WizardStep12 {...stepProps} />
       case 12:
         return <WizardStep13 {...stepProps} />
+      case 13:
+        return <WizardStep14 {...stepProps} />
+      case 14:
+        return <WizardStep15 {...stepProps} />
+      case 15:
+        return <WizardStep16 {...stepProps} />
       default:
         return (
           <div className="text-center py-12">

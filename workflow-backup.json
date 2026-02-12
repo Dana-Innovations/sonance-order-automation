@@ -1,0 +1,1178 @@
+{
+  "updatedAt": "2026-01-13T00:17:05.876Z",
+  "createdAt": "2025-12-20T00:18:24.670Z",
+  "id": "WiJuy1l0UxdVNWQI",
+  "name": "OrderEntryAutomation",
+  "description": "",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=CUSTOMER CONTEXT:\nCustomer_Name: {{ $('Search for Customer by Email').item.json.customer_name }}\nPS_Customer_ID: {{ $('Search for Customer by Email').item.json.ps_customer_id }}\n\nEMAIL METADATA:\nSubject: {{ $('Get New Emails from OM Inbox').item.json.subject }}\nSender: {{ $('Get New Emails from OM Inbox').item.json.sender.emailAddress.address }}\n\nEMAIL BODY:\n{{ $('Get New Emails from OM Inbox').item.json.body.content }}\n\nPDF CONTENT:\n{{ $('Extract PDF').item.json.text }}\n\n---\nPlease extract all order header and line item data from the above email and PDF according to the defined schema. Use the Customer_Name and PS_Customer_ID values provided above (do not extract from the documents). Return the complete order in JSON format.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are an order extraction assistant specialized in extracting purchase order and sales order details from emails and PDF documents.\n\nGENERAL EXTRACTION FRAMEWORK:\n\nYour task is to:\n1. Analyze the email subject, body, and sender information\n2. Extract text content from the PDF attachment\n3. Identify and extract order details according to the schema below\n4. Return all extracted data in structured JSON format\n\nREQUIRED ORDER HEADER FIELDS:\n\n- Order Number / Purchase Order Number (required)\n- Order Date (required)\n- Customer Name (required): Use the Customer_Name value provided in the prompt\n- PS_Customer_ID (required): Follow the PS_Customer_ID determination rules below\n- Currency Code (required)\n- CarrierCode (Carrier Code): Extract the carrier code from the order document. Use empty string if not present.\n- ShipViaCode (Ship Via / Shipment method code): Extract the ship via or shipment method code from the order document. Use empty string if not present.\n- OrderHeaderNotes (Customer Order Header Notes): Extract any header-level notes, comments, or special instructions from the order document. This may include multiple sentences with alphanumeric content and special characters. Use empty string if no notes are present.\n- custShipMethod (Customer Shipment Method): Extract the customer-specified shipment method from the order document. Use empty string if not present.\n\nPS_CUSTOMER_ID DETERMINATION RULES:\n\nThe PS_Customer_ID value provided in the prompt will be one of two types:\n\n1. Specific Customer ID: A 6-8 character alphanumeric value\n   - If a specific PS_Customer_ID is provided (not \"MULTI\"), use this exact value for the order\n   \n2. Multi-Account Indicator: The value \"MULTI\"\n   - If PS_Customer_ID is \"MULTI\", this indicates the customer has multiple affiliated accounts\n   - You must follow the account identification rules in the \"MULTI-ACCOUNT IDENTIFICATION INSTRUCTIONS\" section below to determine the correct PS_Customer_ID for this order\n   - Each PDF contains only one order, so you need to identify which of the customer's affiliated accounts this specific order belongs to\n   - Carefully match the order details against the provided criteria to select the appropriate account\n\nMULTI-ACCOUNT IDENTIFICATION INSTRUCTIONS:\n\n{{ $('Search for Customer by Email').item.json.MultiAccount_Prompt }}\n\nOTHER ORDER HEADER SPECIFIC INSTRUCTIONS:\n\n{{ $('Search for Customer by Email').item.json.order_header_prompt }}\n\nSHIP-TO ADDRESS PARSING:\n\nParse the ship-to address into these individual fields:\n\n- shiptoName: The name/company on the ship-to address\n- address1: Primary street address (required)\n- address2: Secondary address line (apartment, suite, etc.) - use empty string if not present\n- address3: Tertiary address line - use empty string if not present\n- city: City name (required)\n- state: State as 2-character US state abbreviation (required, e.g., CA, NY, TX)\n- postalCode: ZIP/postal code (required)\n- shiptoCountry: Country code as 3-character ISO 3166-1 alpha-3 code (required, e.g., USA, CAN, MEX, GBR, FRA, DEU, JPN)\n\nIMPORTANT ADDRESS FIELD RULES:\n\n- The state field must always be a 2-character US state abbreviation. Convert full state names to abbreviations if necessary.\n- The shiptoCountry field must always be a 3-character ISO 3166-1 alpha-3 country code. Convert full country names to their standard 3-character codes:\n  * \"United States\", \"United States of America\", \"US\", \"U.S.\", \"U.S.A.\" → \"USA\"\n  * \"Canada\" → \"CAN\"\n  * \"Mexico\" → \"MEX\"\n  * \"United Kingdom\", \"UK\", \"Great Britain\" → \"GBR\"\n  * \"France\" → \"FRA\"\n  * \"Germany\", \"Deutschland\" → \"DEU\"\n  * \"Japan\" → \"JPN\"\n  * And all other countries to their respective ISO 3166-1 alpha-3 codes\n- If the country cannot be determined, use an empty string.\n\nLINE ITEM FIELDS:\n\n{{ $('Search for Customer by Email').item.json.order_line_prompt }}\n\nPRODUCT ID TRANSFORMATION RULES:\n\nFor sonanceProdTrans, extract and transform the sonanceProductOrig value by removing any prefixes and extracting only the 5-character product ID. If the product ID cannot be determined or is not exactly 5 characters, use an empty string.\n\nCRITICAL REMINDERS:\n\n- Each PDF contains exactly one order\n- You must include Customer_Name exactly as provided in the prompt\n- For PS_Customer_ID:\n  * If a specific 6-8 character value is provided (not \"MULTI\"), use it exactly as given\n  * If \"MULTI\" is provided, carefully apply the account identification rules in the \"MULTI-ACCOUNT IDENTIFICATION INSTRUCTIONS\" section to determine the correct PS_Customer_ID for this order based on the order's characteristics\n  * When PS_Customer_ID is \"MULTI\", do NOT use \"MULTI\" as the final value—you must determine the actual account ID using the provided instructions\n  * If PS_Customer_ID is \"MULTI\" and you cannot determine the correct account using the provided instructions, note this as an error in your response\n- Do not extract Customer_Name or PS_Customer_ID from the PDF or email unless specifically instructed in the multi-account identification rules\n- Be thorough and accurate\n- Note any missing or unclear information in your response"
+        }
+      },
+      "id": "74b81c6b-31af-4b89-a31d-a97a28182edd",
+      "name": "AI Agent: Extract Order Data",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        2352,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-5-20250929",
+          "cachedResultName": "Claude Sonnet 4.5"
+        },
+        "options": {}
+      },
+      "id": "ee671eaa-c0d2-4fbb-9385-bfd1a1dc1011",
+      "name": "Claude Anthropic Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        2352,
+        512
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "TPWnHA1K3PR0WAar",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"orderNumber\": \"PO-12345\",\n  \"orderDate\": \"2024-12-20\",\n  \"customerName\": \"Acme Corporation\",\n  \"PS_Customer_ID\": \"CUST12345\",\n  \"shiptoName\": \"John Smith\",\n  \"address1\": \"123 Main Street\",\n  \"address2\": \"Suite 100\",\n  \"address3\": \"\",\n  \"city\": \"Los Angeles\",\n  \"state\": \"CA\",\n  \"postalCode\": \"90001\",\n  \"shiptoCountry\": \"USA\",\n  \"currencyCode\": \"USD\",\n  \"CarrierCode\": \"UPS\",\n  \"ShipViaCode\": \"GROUND\",\n  \"OrderHeaderNotes\": \"Please deliver during business hours. Contact recipient upon arrival.\",\n  \"custShipMethod\": \"Standard Ground\",\n  \"lineItems\": [\n    {\n      \"lineNumber\": 1,\n      \"custproductsku\": \"SKU-001\",\n      \"sonanceProductOrig\": \"MODEL-001\",\n      \"custLineDesc\": \"Customer description of the product\",\n      \"sonanceProdTrans\": \"00123\",\n      \"quantity\": 10,\n      \"uom\": \"EA\",\n      \"unitPrice\": 25.50,\n      \"lineTotal\": 255.00\n    }\n  ]\n}"
+      },
+      "id": "60224f0e-0dc1-427b-927e-906771d38a1d",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        2496,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "folderMessage",
+        "folderId": {
+          "__rl": true,
+          "value": "AAMkADM2NmU4ZTAyLTAyYjktNDhhYS1iNTA3LTczMmIwZTA2NzdkOQAuAAAAAAAuCq4S_mPTS4bcX5CBza8MAQC5SJuQiUSHToXvvFnYpHoTAAOnIKjPAAA=",
+          "mode": "list",
+          "cachedResultName": "New Sales Orders",
+          "cachedResultUrl": "https://outlook.office365.com/mail/AAMkADM2NmU4ZTAyLTAyYjktNDhhYS1iNTA3LTczMmIwZTA2NzdkOQAuAAAAAAAuCq4S_mPTS4bcX5CBza8MAQC5SJuQiUSHToXvvFnYpHoTAAOnIKjPAAA%3D"
+        },
+        "returnAll": true,
+        "output": "raw",
+        "filtersUI": {
+          "values": {
+            "filters": {}
+          }
+        },
+        "options": {
+          "attachmentsPrefix": "attachment_",
+          "downloadAttachments": true
+        }
+      },
+      "id": "159a4043-58a1-4ab2-9353-d2915758faa1",
+      "name": "Get New Emails from OM Inbox",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        480
+      ],
+      "webhookId": "3d075c96-42d4-4817-bc06-014e6865be51",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "t4FLsWM3DBXe5Qg0",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "orders",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "cust_order_number",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.orderNumber }}"
+            },
+            {
+              "fieldId": "ps_customer_id",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.PS_Customer_ID }}"
+            },
+            {
+              "fieldId": "customername",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.customerName }}"
+            },
+            {
+              "fieldId": "cust_order_date",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.orderDate }}"
+            },
+            {
+              "fieldId": "currency_code",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.currencyCode }}"
+            },
+            {
+              "fieldId": "status_code",
+              "fieldValue": "01"
+            },
+            {
+              "fieldId": "shipto_name",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.shiptoName }}"
+            },
+            {
+              "fieldId": "cust_shipto_address_line1",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.address1 }}"
+            },
+            {
+              "fieldId": "cust_shipto_address_line2",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.address2 }}"
+            },
+            {
+              "fieldId": "cust_shipto_address_line3",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.address3 }}"
+            },
+            {
+              "fieldId": "cust_shipto_city",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.city }}"
+            },
+            {
+              "fieldId": "cust_shipto_state",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.state }}"
+            },
+            {
+              "fieldId": "cust_shipto_postal_code",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.postalCode }}"
+            },
+            {
+              "fieldId": "cust_shipto_country",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.shiptoCountry }}"
+            },
+            {
+              "fieldId": "custshipmethod",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.custShipMethod }}"
+            },
+            {
+              "fieldId": "cust_header_notes",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.OrderHeaderNotes }}"
+            },
+            {
+              "fieldId": "Son_Carrier_ID",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.CarrierCode }}"
+            },
+            {
+              "fieldId": "Son_Ship_via",
+              "fieldValue": "={{ $('AI Agent: Extract Order Data').item.json.output.ShipViaCode }}"
+            },
+            {
+              "fieldId": "email_sender",
+              "fieldValue": "={{ $('Get New Emails from OM Inbox').item.json.sender.emailAddress.address }}"
+            },
+            {
+              "fieldId": "email_subject",
+              "fieldValue": "={{ $('Get New Emails from OM Inbox').item.json.subject }}"
+            },
+            {
+              "fieldId": "email_received_at",
+              "fieldValue": "={{ $('Get New Emails from OM Inbox').item.json.receivedDateTime }}"
+            },
+            {
+              "fieldId": "pdf_file_url",
+              "fieldValue": "={{ $json.webUrl }}"
+            },
+            {
+              "fieldId": "csr_id",
+              "fieldValue": "={{ $('Search for Customer by Email').item.json.csr_id }}"
+            }
+          ]
+        }
+      },
+      "id": "insert-order",
+      "name": "Insert Order Header",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        3136,
+        288
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "ck634X9GDWz9U54I",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "lineItems",
+        "options": {}
+      },
+      "id": "split-lines",
+      "name": "Split Order Lines",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 3.1,
+      "position": [
+        3536,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "order_lines",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "cust_order_number",
+              "fieldValue": "={{ $('Insert Order Header').item.json.cust_order_number }}"
+            },
+            {
+              "fieldId": "cust_line_number",
+              "fieldValue": "={{ $json.lineNumber }}"
+            },
+            {
+              "fieldId": "cust_product_sku",
+              "fieldValue": "={{ $json.custproductsku }}"
+            },
+            {
+              "fieldId": "sonance_prod_sku",
+              "fieldValue": "={{ $json.sonanceProductOrig }}"
+            },
+            {
+              "fieldId": "cust_line_desc",
+              "fieldValue": "={{ $json.custLineDesc }}"
+            },
+            {
+              "fieldId": "cust_quantity",
+              "fieldValue": "={{ $json.quantity }}"
+            },
+            {
+              "fieldId": "cust_uom",
+              "fieldValue": "={{ $json.uom }}"
+            },
+            {
+              "fieldId": "cust_unit_price",
+              "fieldValue": "={{ $json.unitPrice }}"
+            },
+            {
+              "fieldId": "cust_line_total",
+              "fieldValue": "={{ $json.lineTotal }}"
+            },
+            {
+              "fieldId": "sonance_prod_sku",
+              "fieldValue": "={{ $json.sonanceProdTrans }}"
+            },
+            {
+              "fieldId": "ps_customer_id",
+              "fieldValue": "={{ $('Insert Order Header').item.json.ps_customer_id }}"
+            }
+          ]
+        }
+      },
+      "id": "insert-line",
+      "name": "Insert Order Line",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        4064,
+        288
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "ck634X9GDWz9U54I",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "U018BNEG264",
+          "mode": "list",
+          "cachedResultName": "keithh"
+        },
+        "text": "=An Order has been successfully imported and is ready for review:\n\n*Customer Order Number:* {{ $json.cust_order_number }}\n*Order Date:* {{ $json.cust_order_date }}\n*Customer Name:* {{ $json.customername }}\n*Number of Lines:* {{ $('Aggregate Order Lines').item.json.lineCount }}\n*Order Total:* {{ $('Aggregate Order Lines').item.json.orderTotal }}",
+        "otherOptions": {}
+      },
+      "id": "slack-success",
+      "name": "Slack: New Order Success",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        4832,
+        288
+      ],
+      "webhookId": "8785165c-ecb5-4c7b-b1ba-a15e2db33cf1",
+      "credentials": {
+        "slackApi": {
+          "id": "OQYs6f0HS7sdTXoK",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e2793ea7-a950-4e55-8373-e427d7d1983f",
+              "name": "lineItems",
+              "value": "={{ $('AI Agent: Extract Order Data').item.json.output.lineItems }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-line-items",
+      "name": "Set Line Items Array",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3328,
+        288
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "659a96a6-ac74-4938-b9cf-177562b60960",
+      "name": "When clicking 'Execute workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "customer-found",
+              "name": "customerFound",
+              "value": "={{ $json.ps_customer_id ? true : false }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-customer-found",
+      "name": "Set Customer Found Status",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        336,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "customer-found-rule",
+                    "leftValue": "={{ $json.customerFound }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Customer Found"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "customer-not-found-rule",
+                    "leftValue": "={{ $json.customerFound }}",
+                    "rightValue": false,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Customer Not Found"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "id": "switch-customer-found",
+      "name": "Customer Found or Not Found",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        560,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "customers",
+        "limit": 1,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "sender_email",
+              "condition": "ilike",
+              "keyValue": "=*{{ $('Get New Emails from OM Inbox').item.json.sender.emailAddress.address }}*"
+            },
+            {
+              "keyName": "is_active",
+              "condition": "eq",
+              "keyValue": "true"
+            }
+          ]
+        }
+      },
+      "id": "validate-customer",
+      "name": "Search for Customer by Email",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        112,
+        480
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "ck634X9GDWz9U54I",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "messageAttachment",
+        "operation": "download",
+        "messageId": {
+          "__rl": true,
+          "value": "={{ $('Get New Emails from OM Inbox').item.json.id }}",
+          "mode": "id"
+        },
+        "attachmentId": {
+          "__rl": true,
+          "value": "={{ $json.attachmentId }}",
+          "mode": "id"
+        }
+      },
+      "id": "download-pdf-attachment",
+      "name": "Download PDF Attachment",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1904,
+        288
+      ],
+      "webhookId": "5f78a26f-60fa-42c8-a4d6-76bcc549eab9",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "t4FLsWM3DBXe5Qg0",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "messageAttachment",
+        "operation": "getAll",
+        "messageId": {
+          "mode": "id",
+          "value": "={{ $('Get New Emails from OM Inbox').item.json.id }}",
+          "__rl": true
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "get-attachments",
+      "name": "Get Attachments",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        288
+      ],
+      "webhookId": "c7319e78-9252-49b8-a1e6-6da763c73eda",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "t4FLsWM3DBXe5Qg0",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter for ALL PDF attachments (returns array of all PDFs)\nconst items = $input.all();\nconst pdfAttachments = items.filter(item => {\n  const name = item.json.name || '';\n  const contentType = item.json.contentType || '';\n  return name.toLowerCase().endsWith('.pdf') || contentType === 'application/pdf';\n});\n\nif (pdfAttachments.length === 0) {\n  throw new Error('No PDF attachment found');\n}\n\n// Return all PDF attachments as array\nreturn pdfAttachments.map(item => ({json: item.json}));"
+      },
+      "id": "filter-pdf-attachment",
+      "name": "Filter PDF Attachment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1232,
+        288
+      ],
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "U018BNEG264",
+          "mode": "list",
+          "cachedResultName": "keithh"
+        },
+        "text": "=Customer is not setup for Order Automation or is Inactive.\n\nEmail Date:  {{ $('Get New Emails from OM Inbox').item.json.receivedDateTime }}  \n\nSender:  {{ $('Get New Emails from OM Inbox').item.json.sender.emailAddress.address }}  \n\nSubject:  {{ $('Get New Emails from OM Inbox').item.json.subject }}",
+        "otherOptions": {}
+      },
+      "id": "37f9d73b-062e-4e8b-b05c-61e4319a9293",
+      "name": "Customer not Setup Message",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        784,
+        576
+      ],
+      "webhookId": "fe2b171c-f457-4900-8b4a-ac6bafeec2c3",
+      "credentials": {
+        "slackApi": {
+          "id": "OQYs6f0HS7sdTXoK",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "U018BNEG264",
+          "mode": "list",
+          "cachedResultName": "keithh"
+        },
+        "text": "Order Does not have an Attachment, Please check email",
+        "otherOptions": {}
+      },
+      "id": "f947cd17-055c-4557-8338-89e11190cbe9",
+      "name": "No Attachment Message",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1008,
+        480
+      ],
+      "webhookId": "fe2b171c-f457-4900-8b4a-ac6bafeec2c3",
+      "credentials": {
+        "slackApi": {
+          "id": "OQYs6f0HS7sdTXoK",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "customer-found-rule",
+                    "leftValue": "={{ $('Get New Emails from OM Inbox').item.json.hasAttachments }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Has Attachment"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "customer-not-found-rule",
+                    "leftValue": "={{ $('Get New Emails from OM Inbox').item.json.hasAttachments }}",
+                    "rightValue": false,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "No Attachment"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "id": "72b89a5e-aa71-485c-8a64-0872360d383a",
+      "name": "Email Has Attachments",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        784,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {
+          "joinPages": true
+        }
+      },
+      "id": "ca7605de-c562-414f-bb42-70e3922a2a33",
+      "name": "Extract PDF",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        2128,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "site": {
+          "__rl": true,
+          "value": "danainnovations.sharepoint.com,5f10fc18-9e47-4806-a6ca-6255341f75d9,cad6a9ff-5c4b-4ed9-b6a4-1a7f29472a72",
+          "mode": "list",
+          "cachedResultName": "Sonance Order Management Automation"
+        },
+        "folder": {
+          "__rl": true,
+          "value": "={{ $('Search for Customer by Email').item.json.sharepoint_folder_id }}",
+          "mode": "id"
+        },
+        "fileName": "={{ $json.output.PS_Customer_ID }}-{{ $json.output.orderNumber }}.pdf",
+        "fileContents": "data",
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.microsoftSharePoint",
+      "typeVersion": 1,
+      "position": [
+        2944,
+        288
+      ],
+      "id": "9a606074-9465-4d3f-ad5a-af176989a1be",
+      "name": "Upload file",
+      "credentials": {
+        "microsoftSharePointOAuth2Api": {
+          "id": "MlQTY1eX4lrreUtY",
+          "name": "Microsoft SharePoint account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "messageAttachment",
+        "operation": "download",
+        "messageId": {
+          "__rl": true,
+          "value": "={{ $('Get New Emails from OM Inbox').item.json.id }}",
+          "mode": "id"
+        },
+        "attachmentId": {
+          "__rl": true,
+          "value": "={{ $('Preserve Attachment ID').item.json.attachmentId }}",
+          "mode": "id"
+        }
+      },
+      "id": "download-pdf-for-sharepoint",
+      "name": "Download PDF for SharePoint",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        2752,
+        288
+      ],
+      "webhookId": "8d0907fa-17e6-4d8f-a8bd-7d8e2d9deeab",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "t4FLsWM3DBXe5Qg0",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all items from the previous node (all completed order line inserts)\nconst items = $input.all();\n\n// Group items by order number and aggregate line totals\nconst orderGroups = new Map();\nitems.forEach(item => {\n  const orderNumber = item.json.cust_order_number;\n  const lineTotal = parseFloat(item.json.cust_line_total) || 0;\n  \n  if (!orderGroups.has(orderNumber)) {\n    orderGroups.set(orderNumber, {\n      lineItems: [],\n      totalAmount: 0\n    });\n  }\n  \n  const group = orderGroups.get(orderNumber);\n  group.lineItems.push(item);\n  group.totalAmount += lineTotal;\n});\n\n// Build final results with order number, line count, and order total only\nconst results = [];\nfor (const [orderNumber, group] of orderGroups.entries()) {\n  const orderSummary = {\n    cust_order_number: orderNumber,\n    lineCount: group.lineItems.length,\n    orderTotal: parseFloat(group.totalAmount.toFixed(2))\n  };\n  \n  results.push({json: orderSummary});\n}\n\nreturn results;"
+      },
+      "id": "aggregate-lines",
+      "name": "Aggregate Order Lines",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4416,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "id",
+        "options": {}
+      },
+      "id": "split-pdf-attachments",
+      "name": "Split PDF Attachments",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 3.1,
+      "position": [
+        1456,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "attachment-id",
+              "name": "attachmentId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f53a79c6-a84f-48ee-bc40-b81af48ef561",
+      "name": "Preserve Attachment ID",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1680,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "orders",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "cust_order_number",
+              "keyValue": "={{ $json.cust_order_number }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        4624,
+        288
+      ],
+      "id": "b94b9da4-9660-4610-a0dd-750a937a53a4",
+      "name": "Get a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "ck634X9GDWz9U54I",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Claude Anthropic Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent: Extract Order Data",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent: Extract Order Data",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get New Emails from OM Inbox": {
+      "main": [
+        [
+          {
+            "node": "Search for Customer by Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent: Extract Order Data": {
+      "main": [
+        [
+          {
+            "node": "Download PDF for SharePoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Order Lines": {
+      "main": [
+        [
+          {
+            "node": "Insert Order Line",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Order Header": {
+      "main": [
+        [
+          {
+            "node": "Set Line Items Array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Line Items Array": {
+      "main": [
+        [
+          {
+            "node": "Split Order Lines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking 'Execute workflow'": {
+      "main": [
+        [
+          {
+            "node": "Get New Emails from OM Inbox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Customer Found Status": {
+      "main": [
+        [
+          {
+            "node": "Customer Found or Not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Customer Found or Not Found": {
+      "main": [
+        [
+          {
+            "node": "Email Has Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Customer not Setup Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search for Customer by Email": {
+      "main": [
+        [
+          {
+            "node": "Set Customer Found Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Attachments": {
+      "main": [
+        [
+          {
+            "node": "Filter PDF Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Has Attachments": {
+      "main": [
+        [
+          {
+            "node": "Get Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Attachment Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download PDF Attachment": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF": {
+      "main": [
+        [
+          {
+            "node": "AI Agent: Extract Order Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file": {
+      "main": [
+        [
+          {
+            "node": "Insert Order Header",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download PDF for SharePoint": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Order Lines": {
+      "main": [
+        [
+          {
+            "node": "Get a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Order Line": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Order Lines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter PDF Attachment": {
+      "main": [
+        [
+          {
+            "node": "Split PDF Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split PDF Attachments": {
+      "main": [
+        [
+          {
+            "node": "Preserve Attachment ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preserve Attachment ID": {
+      "main": [
+        [
+          {
+            "node": "Download PDF Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row": {
+      "main": [
+        [
+          {
+            "node": "Slack: New Order Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": {
+    "node:Check for New Messages Every X Min.": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "49bb9d0c-397b-40f9-b5a2-7cc9ecefc0b3",
+  "activeVersionId": null,
+  "versionCounter": 544,
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-12-20T00:18:24.675Z",
+      "createdAt": "2025-12-20T00:18:24.675Z",
+      "role": "workflow:owner",
+      "workflowId": "WiJuy1l0UxdVNWQI",
+      "projectId": "JyqFX7xk9DtpV5xD",
+      "project": {
+        "updatedAt": "2025-12-19T19:52:29.459Z",
+        "createdAt": "2025-12-19T19:52:24.730Z",
+        "id": "JyqFX7xk9DtpV5xD",
+        "name": "Keith Harper <keithh@sonance.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "projectRelations": [
+          {
+            "updatedAt": "2025-12-19T19:52:24.730Z",
+            "createdAt": "2025-12-19T19:52:24.730Z",
+            "userId": "991a89a9-8a9a-4118-89ea-92f16afc1e8d",
+            "projectId": "JyqFX7xk9DtpV5xD",
+            "user": {
+              "updatedAt": "2026-01-12T23:18:00.000Z",
+              "createdAt": "2025-12-19T19:52:23.386Z",
+              "id": "991a89a9-8a9a-4118-89ea-92f16afc1e8d",
+              "email": "keithh@sonance.com",
+              "firstName": "Keith",
+              "lastName": "Harper",
+              "personalizationAnswers": null,
+              "settings": {
+                "userActivated": false,
+                "userClaimedAiCredits": true,
+                "easyAIWorkflowOnboarded": true
+              },
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2026-01-12",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": null
+}
