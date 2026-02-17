@@ -70,9 +70,7 @@ export function OrderActions({
   // Add Line available for NEW (01), REVIEWED NO CHANGES (02), or REVIEWED WITH CHANGES (03)
   // and order has not been posted to PeopleSoft yet
   const canAddLine = (
-    (order.status_code === '01' || order.status_code === '02' || order.status_code === '03') &&
-    !order.ps_order_number &&
-    order.status_code !== '06'
+    order.status_code === '01' || order.status_code === '02' || order.status_code === '03'
   )
 
   return (
