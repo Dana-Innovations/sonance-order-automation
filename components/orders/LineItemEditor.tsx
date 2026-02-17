@@ -58,16 +58,15 @@ export function LineItemEditor({
     const fetchValidUoms = async () => {
       try {
         const { data, error } = await supabase
-          .from('customer_product_pricing')
-          .select('uom')
-          .eq('ps_customer_id', psCustomerId)
+          .from('customer_pricing_sync')
+          .select('unit_of_measure')
+          .eq('cust_id', psCustomerId)
           .eq('product_id', formData.sonanceItem)
-          .eq('currency_code', currencyCode)
 
         if (error) throw error
 
         if (data && data.length > 0) {
-          const uoms = [...new Set(data.map(item => item.uom).filter(Boolean))] as string[]
+          const uoms = [...new Set(data.map(item => item.unit_of_measure).filter(Boolean))] as string[]
           setValidUoms(uoms.length > 0 ? uoms : ['EA', 'PR', 'BX'])
         } else {
           setValidUoms(['EA', 'PR', 'BX'])
@@ -79,19 +78,19 @@ export function LineItemEditor({
     }
 
     fetchValidUoms()
-  }, [formData.sonanceItem, psCustomerId, currencyCode, isEditing, supabase])
+  }, [formData.sonanceItem, psCustomerId, isEditing, supabase])
 
   const handleProductSelect = (product: {
     product_id: string
-    uom: string
-    dfi_price: number
+    unit_of_measure: string
+    net_price: number
     description: string
   }) => {
     setFormData({
       ...formData,
       sonanceItem: product.product_id,
-      uom: product.uom,
-      unitPrice: product.dfi_price.toString(),
+      uom: product.unit_of_measure,
+      unitPrice: product.net_price.toString(),
       // Do NOT overwrite customer description - it should remain unchanged
     })
   }
@@ -107,7 +106,7 @@ export function LineItemEditor({
 
     setIsSaving(true)
 
-    // If the Sonance Item SKU or UOM changed, look up the new price from customer_product_pricing
+    // If the Sonance Item SKU or UOM changed, look up the new price from customer_pricing_sync
     const sonanceSkuChanged = line.sonance_prod_sku !== formData.sonanceItem
     const uomChanged = line.sonance_uom !== formData.uom
     let lookedUpPrice: number | null = null
@@ -119,19 +118,19 @@ export function LineItemEditor({
 
       // First try exact match with UOM
       let { data: pricing, error } = await supabase
-        .from('customer_product_pricing')
-        .select('dfi_price, uom')
-        .eq('ps_customer_id', psCustomerId)
+        .from('customer_pricing_sync')
+        .select('net_price, unit_of_measure')
+        .eq('cust_id', psCustomerId)
         .eq('product_id', formData.sonanceItem)
-        .eq('uom', uomToLookup)
+        .eq('unit_of_measure', uomToLookup)
         .maybeSingle()
 
       // If no exact match, try without UOM filter to find the default price/UOM for this product
       if (!pricing && !error) {
         const { data: fallbackPricing } = await supabase
-          .from('customer_product_pricing')
-          .select('dfi_price, uom')
-          .eq('ps_customer_id', psCustomerId)
+          .from('customer_pricing_sync')
+          .select('net_price, unit_of_measure')
+          .eq('cust_id', psCustomerId)
           .eq('product_id', formData.sonanceItem)
           .limit(1)
           .maybeSingle()
@@ -139,15 +138,15 @@ export function LineItemEditor({
         pricing = fallbackPricing
       }
 
-      if (pricing?.dfi_price != null) {
-        lookedUpPrice = pricing.dfi_price
-        unitPrice = pricing.dfi_price
+      if (pricing?.net_price != null) {
+        lookedUpPrice = pricing.net_price
+        unitPrice = pricing.net_price
       }
 
       // Always use the UOM from the pricing table when product or UOM changes
-      if (pricing?.uom) {
-        lookedUpUom = pricing.uom
-        console.log(`Lookup success: Product ${formData.sonanceItem}, UOM ${pricing.uom}, Price ${pricing.dfi_price}`)
+      if (pricing?.unit_of_measure) {
+        lookedUpUom = pricing.unit_of_measure
+        console.log(`Lookup success: Product ${formData.sonanceItem}, UOM ${pricing.unit_of_measure}, Price ${pricing.net_price}`)
       } else {
         console.log(`Lookup failed: Product ${formData.sonanceItem}, Customer ${psCustomerId}, UOM ${uomToLookup}`, error)
       }

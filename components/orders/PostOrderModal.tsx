@@ -113,7 +113,7 @@ function validateOrderForPost(order: Order, productValidation?: ProductValidatio
     }
   })
 
-  // Validate products against customer_product_pricing
+  // Validate products against customer_pricing_sync
   if (productValidation) {
     productValidation.forEach((pv) => {
       if (!pv.isValid) {
@@ -151,7 +151,7 @@ export function PostOrderModal({
   const supabase = createClient()
   const router = useRouter()
 
-  // Validate products against customer_product_pricing
+  // Validate products against customer_pricing_sync
   // Include line SKUs and UOMs in cache key so it recalculates when lines change
   const lineSkuUomKey = order.order_lines
     ?.map(l => `${l.id}:${l.sonance_prod_sku || l.cust_product_sku}:${l.sonance_uom}:${l.line_status}`)
@@ -181,11 +181,11 @@ export function PostOrderModal({
           continue
         }
 
-        // Check if product exists in customer_product_pricing for this customer
+        // Check if product exists in customer_pricing_sync for this customer
         const { data: pricing } = await supabase
-          .from('customer_product_pricing')
-          .select('product_id, uom')
-          .eq('ps_customer_id', order.ps_customer_id || '')
+          .from('customer_pricing_sync')
+          .select('product_id, unit_of_measure')
+          .eq('cust_id', order.ps_customer_id || '')
           .eq('product_id', productSku)
 
         if (!pricing || pricing.length === 0) {
@@ -203,7 +203,7 @@ export function PostOrderModal({
         }
 
         // Check if any of the pricing records have matching UOM
-        const hasMatchingUom = pricing.some(p => p.uom === uom)
+        const hasMatchingUom = pricing.some(p => p.unit_of_measure === uom)
 
         results.push({
           lineId: line.id,

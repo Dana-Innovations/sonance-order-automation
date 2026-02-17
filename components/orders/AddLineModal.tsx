@@ -55,14 +55,14 @@ export function AddLineModal({ order, userId, onClose }: AddLineModalProps) {
   // Handle product selection - create the line immediately
   const handleProductSelect = async (product: {
     product_id: string
-    uom: string
-    dfi_price: number
+    unit_of_measure: string
+    net_price: number
     description: string
     quantity?: number
   }) => {
     try {
       const qty = product.quantity || 1
-      const lineTotal = product.dfi_price * qty
+      const lineTotal = product.net_price * qty
 
       // Insert new line with product information
       const { data: newLine, error } = await supabase
@@ -73,16 +73,16 @@ export function AddLineModal({ order, userId, onClose }: AddLineModalProps) {
           cust_product_sku: 'Added Item',
           cust_line_desc: 'Manually added Product',
           cust_quantity: qty,
-          cust_unit_price: product.dfi_price,
+          cust_unit_price: product.net_price,
           cust_line_total: lineTotal,
-          cust_uom: product.uom,
+          cust_uom: product.unit_of_measure,
           cust_currency_code: order.currency_code,
           ps_customer_id: order.ps_customer_id,
           line_status: 'active',
           sonance_prod_sku: product.product_id,
           sonance_quantity: qty,
-          sonance_uom: product.uom,
-          sonance_unit_price: product.dfi_price,
+          sonance_uom: product.unit_of_measure,
+          sonance_unit_price: product.net_price,
           validated_sku: product.product_id,
           validation_source: 'manual_add',
           is_validated: true,

@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Tables } from '@/lib/types/database'
 import { Search } from 'lucide-react'
 
-type CustomerProductPricing = Tables<'customer_product_pricing'>
+type CustomerPricingSync = Tables<'customer_pricing_sync'>
 
 interface ProductLookupModalProps {
   orderId: string
@@ -15,8 +15,8 @@ interface ProductLookupModalProps {
   showQuantityEntry?: boolean  // Whether to show quantity entry (for Add Line) or immediate selection (for Edit)
   onSelect: (product: {
     product_id: string
-    uom: string
-    dfi_price: number
+    unit_of_measure: string
+    net_price: number
     description: string
     quantity?: number
   }) => void
@@ -33,10 +33,10 @@ export function ProductLookupModal({
 }: ProductLookupModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
-  const [products, setProducts] = useState<CustomerProductPricing[]>([])
+  const [products, setProducts] = useState<CustomerPricingSync[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedProduct, setSelectedProduct] = useState<CustomerProductPricing | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<CustomerPricingSync | null>(null)
   const [quantity, setQuantity] = useState<number>(1)
   const supabase = createClient()
 
@@ -62,11 +62,10 @@ export function ProductLookupModal({
 
       try {
         const { data, error: queryError } = await supabase
-          .from('customer_product_pricing')
+          .from('customer_pricing_sync')
           .select('*')
-          .eq('ps_customer_id', psCustomerId)
-          .eq('currency_code', currencyCode)
-          .or(`product_id.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%`)
+          .eq('cust_id', psCustomerId)
+          .or(`product_id.ilike.%${debouncedQuery}%,product_description.ilike.%${debouncedQuery}%`)
           .order('product_id')
           .limit(100)
 
@@ -78,12 +77,12 @@ export function ProductLookupModal({
         } else {
           // Deduplicate based on ps_customer_id, product_id, uom, currency_code
           const uniqueProducts = data.reduce((acc, product) => {
-            const key = `${product.ps_customer_id}-${product.product_id}-${product.uom}-${product.currency_code}`
+            const key = `${product.cust_id}-${product.product_id}-${product.unit_of_measure}`
             if (!acc.has(key)) {
               acc.set(key, product)
             }
             return acc
-          }, new Map<string, CustomerProductPricing>())
+          }, new Map<string, CustomerPricingSync>())
 
           setProducts(Array.from(uniqueProducts.values()))
         }
@@ -110,7 +109,7 @@ export function ProductLookupModal({
     return () => window.removeEventListener('keydown', handleEscape)
   }, [onClose])
 
-  const handleProductSelect = (product: CustomerProductPricing) => {
+  const handleProductSelect = (product: CustomerPricingSync) => {
     if (showQuantityEntry) {
       // Show quantity entry screen for Add Line
       setSelectedProduct(product)
@@ -119,9 +118,9 @@ export function ProductLookupModal({
       // Immediate selection for Edit Line
       onSelect({
         product_id: product.product_id,
-        uom: product.uom || 'EA',
-        dfi_price: product.dfi_price || 0,
-        description: product.description || '',
+        unit_of_measure: product.unit_of_measure || 'EA',
+        net_price: product.net_price || 0,
+        description: product.product_description || '',
       })
       onClose()
     }
@@ -132,9 +131,9 @@ export function ProductLookupModal({
 
     onSelect({
       product_id: selectedProduct.product_id,
-      uom: selectedProduct.uom || 'EA',
-      dfi_price: selectedProduct.dfi_price || 0,
-      description: selectedProduct.description || '',
+      unit_of_measure: selectedProduct.unit_of_measure || 'EA',
+      net_price: selectedProduct.net_price || 0,
+      description: selectedProduct.product_description || '',
       quantity: quantity,
     })
     onClose()
@@ -212,15 +211,15 @@ export function ProductLookupModal({
                   </div>
                   <div className="flex justify-between">
                     <span className="font-medium text-gray-600">Description:</span>
-                    <span className="text-[#333F48]">{selectedProduct.description || 'N/A'}</span>
+                    <span className="text-[#333F48]">{selectedProduct.product_description || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-medium text-gray-600">UOM:</span>
-                    <span className="text-[#333F48]">{selectedProduct.uom || 'EA'}</span>
+                    <span className="text-[#333F48]">{selectedProduct.unit_of_measure || 'EA'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-medium text-gray-600">Unit Price:</span>
-                    <span className="font-semibold text-[#00A3E1]">{formatPrice(selectedProduct.dfi_price)}</span>
+                    <span className="font-semibold text-[#00A3E1]">{formatPrice(selectedProduct.net_price)}</span>
                   </div>
                 </div>
               </div>
@@ -244,7 +243,7 @@ export function ProductLookupModal({
                 <div className="flex justify-between items-center">
                   <span className="font-medium text-[#333F48]" style={{ fontSize: '13px' }}>Line Total:</span>
                   <span className="font-bold text-[#00A3E1]" style={{ fontSize: '16px' }}>
-                    {formatPrice((selectedProduct.dfi_price || 0) * quantity)}
+                    {formatPrice((selectedProduct.net_price || 0) * quantity)}
                   </span>
                 </div>
               </div>
@@ -284,7 +283,7 @@ export function ProductLookupModal({
                 <tbody>
                   {products.map((product, index) => (
                     <tr
-                      key={`${product.product_id}-${product.uom}-${index}`}
+                      key={`${product.product_id}-${product.unit_of_measure}-${index}`}
                       onClick={() => handleProductSelect(product)}
                       className="border-b border-gray-200 cursor-pointer transition-colors"
                       style={{ backgroundColor: 'white' }}
@@ -292,9 +291,9 @@ export function ProductLookupModal({
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
                     >
                       <td className="py-2 px-3 font-medium" style={{ color: '#000' }}>{product.product_id}</td>
-                      <td className="py-2 px-3" style={{ color: '#000' }}>{product.description || 'N/A'}</td>
-                      <td className="py-2 px-3" style={{ color: '#000' }}>{product.uom || 'N/A'}</td>
-                      <td className="py-2 px-3 text-right font-medium" style={{ color: '#000' }}>{formatPrice(product.dfi_price)}</td>
+                      <td className="py-2 px-3" style={{ color: '#000' }}>{product.product_description || 'N/A'}</td>
+                      <td className="py-2 px-3" style={{ color: '#000' }}>{product.unit_of_measure || 'N/A'}</td>
+                      <td className="py-2 px-3 text-right font-medium" style={{ color: '#000' }}>{formatPrice(product.net_price)}</td>
                     </tr>
                   ))}
                 </tbody>

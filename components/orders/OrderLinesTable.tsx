@@ -327,7 +327,7 @@ export function OrderLinesTable({
         // This is the price that was set at order creation time or manually edited
         const storedSonancePrice = line.sonance_unit_price
 
-        // PRIORITY 2: Lookup current pricing from customer_product_pricing for comparison
+        // PRIORITY 2: Lookup current pricing from customer_pricing_sync for comparison
         const skuToLookup = line.sonance_prod_sku || line.cust_product_sku
         const uomToLookup = line.sonance_uom
 
@@ -338,19 +338,19 @@ export function OrderLinesTable({
         if (skuToLookup) {
           // First try exact match with UOM
           let { data: pricing } = await supabase
-            .from('customer_product_pricing')
-            .select('dfi_price')
-            .eq('ps_customer_id', order.ps_customer_id || '')
+            .from('customer_pricing_sync')
+            .select('net_price')
+            .eq('cust_id', order.ps_customer_id || '')
             .eq('product_id', skuToLookup)
-            .eq('uom', uomToLookup || 'EA')
+            .eq('unit_of_measure', uomToLookup || 'EA')
             .maybeSingle()
 
           // If no exact match, try without UOM filter
           if (!pricing) {
             const { data: fallbackPricing } = await supabase
-              .from('customer_product_pricing')
-              .select('dfi_price')
-              .eq('ps_customer_id', order.ps_customer_id || '')
+              .from('customer_pricing_sync')
+              .select('net_price')
+              .eq('cust_id', order.ps_customer_id || '')
               .eq('product_id', skuToLookup)
               .limit(1)
               .maybeSingle()
@@ -359,12 +359,12 @@ export function OrderLinesTable({
           }
 
           // Store current pricing table price
-          updatedPricingTablePrices[line.id] = pricing?.dfi_price ?? null
+          updatedPricingTablePrices[line.id] = pricing?.net_price ?? null
 
           // Calculate price variance if both prices exist
-          if (pricing?.dfi_price != null && storedSonancePrice != null) {
+          if (pricing?.net_price != null && storedSonancePrice != null) {
             const custPrice = line.cust_unit_price
-            const currentPricingPrice = pricing.dfi_price
+            const currentPricingPrice = pricing.net_price
 
             if (custPrice != null && custPrice > 0) {
               // Use the STORED sonance price for variance calculation, not current pricing
@@ -389,9 +389,9 @@ export function OrderLinesTable({
     lookupAndUpdatePrices()
   }, [order.id, lineSkusKey, order.ps_customer_id, supabase])
 
-  // Fetch Sonance description from customer_product_pricing for each line
+  // Fetch Sonance description from customer_pricing_sync for each line
   const { data: sonanceDescriptions, refetch: refetchDescriptions } = useQuery({
-    queryKey: ['sonance-descriptions', order.id, order.ps_customer_id, order.currency_code, lineSkusKey],
+    queryKey: ['sonance-descriptions', order.id, order.ps_customer_id, lineSkusKey],
     queryFn: async () => {
       const lines = order.order_lines || []
       const descriptions: Record<string, string> = {}
@@ -400,18 +400,17 @@ export function OrderLinesTable({
         const sonanceSku = line.sonance_prod_sku || line.cust_product_sku
         if (!sonanceSku) continue
 
-        // Lookup description from customer_product_pricing
-        // Try with currency_code first, then without
-        let { data: pricing } = await supabase
-          .from('customer_product_pricing')
-          .select('description')
-          .eq('ps_customer_id', order.ps_customer_id || '')
+        // Lookup description from customer_pricing_sync
+        const { data: pricing } = await supabase
+          .from('customer_pricing_sync')
+          .select('product_description')
+          .eq('cust_id', order.ps_customer_id || '')
           .eq('product_id', sonanceSku)
           .limit(1)
           .maybeSingle()
 
-        if (pricing?.description) {
-          descriptions[line.id] = pricing.description
+        if (pricing?.product_description) {
+          descriptions[line.id] = pricing.product_description
         }
       }
 

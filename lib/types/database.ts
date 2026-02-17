@@ -185,61 +185,91 @@ export type Database = {
           },
         ]
       }
-      customer_product_pricing: {
+      customer_pricing_sync: {
         Row: {
           id: string
-          ps_customer_id: string
-          customer_name: string | null
-          currency_code: string
           product_id: string
-          description: string | null
-          brand: string | null
-          category: string | null
-          is_kit: boolean | null
-          uom: string | null
-          is_default_uom: boolean | null
-          pricing_uom: string | null
+          cust_id: string | null
+          unit_of_measure: string | null
+          net_price: number | null
           list_price: number | null
-          discount_pct: number | null
-          dfi_price: number | null
+          product_description: string | null
+          setid: string | null
+          prod_setid: string | null
+          qty: number | null
+          msrp_price: number | null
+          dfi: number | null
+          net_margin: number | null
+          dst_id_dis: string | null
+          dst_id_sur: string | null
+          can_bo: string | null
+          can_buy: string | null
+          can_see_msrp: string | null
+          can_see_wholesale: string | null
+          varients: number | null
+          modified: string | null
+          wholesale_margin: number | null
+          record_status: string | null
+          tariff_surcharge: number | null
+          eoep_rule_id: string | null
           created_at: string | null
           updated_at: string | null
         }
         Insert: {
           id?: string
-          ps_customer_id: string
-          customer_name?: string | null
-          currency_code: string
           product_id: string
-          description?: string | null
-          brand?: string | null
-          category?: string | null
-          is_kit?: boolean | null
-          uom?: string | null
-          is_default_uom?: boolean | null
-          pricing_uom?: string | null
+          cust_id?: string | null
+          unit_of_measure?: string | null
+          net_price?: number | null
           list_price?: number | null
-          discount_pct?: number | null
-          dfi_price?: number | null
+          product_description?: string | null
+          setid?: string | null
+          prod_setid?: string | null
+          qty?: number | null
+          msrp_price?: number | null
+          dfi?: number | null
+          net_margin?: number | null
+          dst_id_dis?: string | null
+          dst_id_sur?: string | null
+          can_bo?: string | null
+          can_buy?: string | null
+          can_see_msrp?: string | null
+          can_see_wholesale?: string | null
+          varients?: number | null
+          modified?: string | null
+          wholesale_margin?: number | null
+          record_status?: string | null
+          tariff_surcharge?: number | null
+          eoep_rule_id?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
         Update: {
           id?: string
-          ps_customer_id?: string
-          customer_name?: string | null
-          currency_code?: string
           product_id?: string
-          description?: string | null
-          brand?: string | null
-          category?: string | null
-          is_kit?: boolean | null
-          uom?: string | null
-          is_default_uom?: boolean | null
-          pricing_uom?: string | null
+          cust_id?: string | null
+          unit_of_measure?: string | null
+          net_price?: number | null
           list_price?: number | null
-          discount_pct?: number | null
-          dfi_price?: number | null
+          product_description?: string | null
+          setid?: string | null
+          prod_setid?: string | null
+          qty?: number | null
+          msrp_price?: number | null
+          dfi?: number | null
+          net_margin?: number | null
+          dst_id_dis?: string | null
+          dst_id_sur?: string | null
+          can_bo?: string | null
+          can_buy?: string | null
+          can_see_msrp?: string | null
+          can_see_wholesale?: string | null
+          varients?: number | null
+          modified?: string | null
+          wholesale_margin?: number | null
+          record_status?: string | null
+          tariff_surcharge?: number | null
+          eoep_rule_id?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
