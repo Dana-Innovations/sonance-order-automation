@@ -10,6 +10,7 @@ import { WizardStep3a } from './WizardStep3a'
 import { WizardStep3b } from './WizardStep3b'
 import { WizardStep4 } from './WizardStep4'
 import { WizardStep5 } from './WizardStep5'
+import { WizardStep5b } from './WizardStep5b'
 import { WizardStep6 } from './WizardStep6'
 import { WizardStep7 } from './WizardStep7'
 import { WizardStep9 } from './WizardStep9'
@@ -141,24 +142,26 @@ export function WizardFlow({ initialSession }: WizardFlowProps) {
       case 5:
         return <WizardStep5 {...stepProps} />
       case 6:
-        return <WizardStep6 {...stepProps} />
+        return <WizardStep5b {...stepProps} />
       case 7:
-        return <WizardStep7 {...stepProps} />
+        return <WizardStep6 {...stepProps} />
       case 8:
-        return <WizardStep9 {...stepProps} />
+        return <WizardStep7 {...stepProps} />
       case 9:
-        return <WizardStep10 {...stepProps} />
+        return <WizardStep9 {...stepProps} />
       case 10:
-        return <WizardStep11 {...stepProps} />
+        return <WizardStep10 {...stepProps} />
       case 11:
-        return <WizardStep12 {...stepProps} />
+        return <WizardStep11 {...stepProps} />
       case 12:
-        return <WizardStep13 {...stepProps} />
+        return <WizardStep12 {...stepProps} />
       case 13:
-        return <WizardStep14 {...stepProps} />
+        return <WizardStep13 {...stepProps} />
       case 14:
-        return <WizardStep15 {...stepProps} />
+        return <WizardStep14 {...stepProps} />
       case 15:
+        return <WizardStep15 {...stepProps} />
+      case 16:
         return <WizardStep16 {...stepProps} />
       default:
         return (

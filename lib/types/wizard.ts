@@ -23,6 +23,7 @@ export interface CustomerData {
   // Contact
   sender_email?: string
   sharepoint_folder_id?: string
+  Folder_ID_Proc?: string | null
   csr_id?: string
 
   // Defaults

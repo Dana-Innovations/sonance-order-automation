@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
       sender_email: customerData.sender_email,
       csr_id: customerData.csr_id || null,
       sharepoint_folder_id: customerData.sharepoint_folder_id || null,
+      Folder_ID_Proc: customerData.Folder_ID_Proc || null,
       default_carrier: customerData.default_carrier || null,
       default_ship_via: customerData.default_ship_via || null,
       default_shipto_name: customerData.default_shipto_name || null,
