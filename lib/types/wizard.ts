@@ -83,6 +83,7 @@ export interface Customer {
   sender_email: string
   csr_id: string | null
   sharepoint_folder_id: string | null
+  Folder_ID_Proc: string | null
   default_carrier: string | null
   default_ship_via: string | null
   default_shipto_name: string | null

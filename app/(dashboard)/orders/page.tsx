@@ -11,7 +11,7 @@ export default async function OrdersPage() {
           <h1 className="text-2xl font-light tracking-tight text-[#333F48]" style={{ margin: '0px' }}>
             Orders
           </h1>
-          <p className="text-sm" style={{ margin: '0px', color: 'red' }}>
+          <p className="text-sm text-[#6b7a85]" style={{ margin: '0px' }}>
             Review, validate & edit new customer orders
           </p>
         </div>
@@ -44,7 +44,7 @@ export default async function OrdersPage() {
         <h1 className="text-2xl font-light tracking-tight text-[#333F48]" style={{ margin: '0px' }}>
           Orders
         </h1>
-        <p className="text-sm" style={{ margin: '0px', color: 'red' }}>
+        <p className="text-sm text-[#6b7a85]" style={{ margin: '0px' }}>
           Review, validate & edit new customer orders
         </p>
       </div>

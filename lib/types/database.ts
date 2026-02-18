@@ -288,6 +288,7 @@ export type Database = {
           ps_customer_id: string
           sender_email: string
           sharepoint_folder_id: string | null
+          Folder_ID_Proc: string | null
           updated_at: string | null
         }
         Insert: {
@@ -302,6 +303,7 @@ export type Database = {
           ps_customer_id: string
           sender_email: string
           sharepoint_folder_id?: string | null
+          Folder_ID_Proc?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -316,6 +318,7 @@ export type Database = {
           ps_customer_id?: string
           sender_email?: string
           sharepoint_folder_id?: string | null
+          Folder_ID_Proc?: string | null
           updated_at?: string | null
         }
         Relationships: [

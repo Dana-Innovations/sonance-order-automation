@@ -41,6 +41,7 @@ export function CustomerForm({
     order_header_prompt: customer?.order_header_prompt || '',
     MultiAccount_Prompt: customer?.MultiAccount_Prompt || '',
     sharepoint_folder_id: customer?.sharepoint_folder_id || '',
+    Folder_ID_Proc: customer?.Folder_ID_Proc || '',
     default_carrier: customer?.default_carrier || '',
     default_ship_via: customer?.default_ship_via || '',
     default_shipto_name: customer?.default_shipto_name || '',
@@ -285,6 +286,7 @@ export function CustomerForm({
             order_header_prompt: formData.order_header_prompt || null,
             MultiAccount_Prompt: formData.MultiAccount_Prompt || null,
             sharepoint_folder_id: formData.sharepoint_folder_id,
+            Folder_ID_Proc: formData.Folder_ID_Proc || null,
             default_carrier: formData.default_carrier || null,
             default_ship_via: formData.default_ship_via || null,
             default_shipto_name: formData.default_shipto_name || null,
@@ -306,6 +308,7 @@ export function CustomerForm({
             order_header_prompt: formData.order_header_prompt || null,
             MultiAccount_Prompt: formData.MultiAccount_Prompt || null,
             sharepoint_folder_id: formData.sharepoint_folder_id,
+            Folder_ID_Proc: formData.Folder_ID_Proc || null,
             default_carrier: formData.default_carrier || null,
             default_ship_via: formData.default_ship_via || null,
             default_shipto_name: formData.default_shipto_name || null,
@@ -447,7 +450,7 @@ export function CustomerForm({
                   backgroundRepeat: 'no-repeat'
                 }}
               />
-              <span className="text-sm text-[#333F48] font-medium">Customer Status</span>
+              <span className="text-sm text-[#333F48] font-medium">Customer Status = Active</span>
             </label>
             <p className="text-xs text-[#6b7a85] ml-6">Checked = Active, Unchecked = Inactive</p>
           </div>
@@ -572,7 +575,18 @@ export function CustomerForm({
             </select>
           </div>
 
-          <div></div>
+          <div>
+            <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">
+              Email Processed Folder
+            </label>
+            <textarea
+              value={formData.Folder_ID_Proc}
+              onChange={(e) => setFormData({ ...formData, Folder_ID_Proc: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 bg-white px-5 py-4 text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-2 focus:ring-[#00A3E1]/20"
+              style={{ fontSize: '16px', borderRadius: '7.25px', resize: 'none', height: '98px' }}
+              placeholder="Enter Exchange folder ID"
+            />
+          </div>
         </div>
 
         {/* Default Values Section */}
