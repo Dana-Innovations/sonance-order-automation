@@ -191,7 +191,7 @@ export function PDFHighlightProvider({ children }: { children: React.ReactNode }
           // Exclude all items that are within line item rows
           filteredItems = filteredItems.filter(item => {
             // Check if this item is within any line item row
-            for (const [lineNum, rowRegion] of pageData.lineRowMap.entries()) {
+            for (const [lineNum, rowRegion] of pageData.lineRowMap!.entries()) {
               if (item.y >= rowRegion.y && item.y < rowRegion.y + rowRegion.height) {
                 return false; // Exclude - this is in a line item row
               }

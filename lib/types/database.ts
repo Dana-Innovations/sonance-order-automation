@@ -571,6 +571,8 @@ export type Database = {
           ps_customer_id: string
           ps_order_number: string | null
           shipto_name: string | null
+          Son_Carrier_ID: string | null
+          Son_Ship_via: string | null
           status_code: string
           updated_at: string | null
         }
@@ -607,6 +609,8 @@ export type Database = {
           ps_customer_id: string
           ps_order_number?: string | null
           shipto_name?: string | null
+          Son_Carrier_ID?: string | null
+          Son_Ship_via?: string | null
           status_code?: string
           updated_at?: string | null
         }
@@ -643,6 +647,8 @@ export type Database = {
           ps_customer_id?: string
           ps_order_number?: string | null
           shipto_name?: string | null
+          Son_Carrier_ID?: string | null
+          Son_Ship_via?: string | null
           status_code?: string
           updated_at?: string | null
         }
@@ -863,12 +869,57 @@ export type Database = {
         }
         Relationships: []
       }
+      ship_vias: {
+        Row: {
+          id: string
+          ship_via_code: string
+          ship_via_desc: string
+          is_active: boolean | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          ship_via_code: string
+          ship_via_desc: string
+          is_active?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          ship_via_code?: string
+          ship_via_desc?: string
+          is_active?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      order_issue_counts: {
+        Row: {
+          order_id: string | null
+          cust_order_number: string | null
+          invalid_items_count: number | null
+          price_issues_count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      upsert_product_mapping: {
+        Args: {
+          p_ps_customer_id: string
+          p_cust_product_sku: string
+          p_cust_product_desc: string | null
+          p_sonance_product_sku: string
+          p_created_by_order_id: string
+          p_cust_order_number: string | null
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

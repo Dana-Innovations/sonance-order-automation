@@ -88,7 +88,7 @@ export function PDFViewer({
     }
   }, [pdfUrl])
 
-  const onDocumentLoadSuccess = useCallback((pdf: PDFDocumentProxy) => {
+  const onDocumentLoadSuccess = useCallback((pdf: any) => {
     setNumPages(pdf.numPages)
     setPageNumber(1) // Reset to first page when document loads
     setPdfDocument(pdf)
@@ -339,7 +339,7 @@ export function PDFViewer({
         }}>
           {`PDFViewer Debug:
 Matches: ${highlightMatches.length}
-Canvas: ${pageCanvasRef.current ? `${pageCanvasRef.current.width}x${pageCanvasRef.current.height}` : 'NO'}
+Canvas: ${pageCanvasRef.current ? `${pageCanvasRef.current!.width}x${pageCanvasRef.current!.height}` : 'NO'}
 Scale: ${scale}
 ${highlightMatches.length > 0 ? `
 Highlight Box:

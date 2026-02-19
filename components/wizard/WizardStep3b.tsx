@@ -49,7 +49,7 @@ export function WizardStep3b({ session, onNext, isLoading }: WizardStepProps) {
     // Check if it exists as a child account
     const { data: childAccount, error: childError } = await supabase
       .from('customer_child_accounts')
-      .select('child_ps_account_id, customer_ps_id, customers!customer_child_accounts_customer_ps_id_fkey(customer_name)')
+      .select('child_ps_account_id')
       .eq('child_ps_account_id', trimmedValue)
       .maybeSingle()
 
@@ -61,7 +61,7 @@ export function WizardStep3b({ session, onNext, isLoading }: WizardStepProps) {
     }
 
     if (childAccount) {
-      const parentName = (childAccount.customers as any)?.customer_name || 'another customer'
+      const parentName = 'another customer'
       setError(`This Customer ID is already a child account of ${parentName}`)
       setChecking(false)
       setIsAvailable(false)
@@ -125,12 +125,12 @@ export function WizardStep3b({ session, onNext, isLoading }: WizardStepProps) {
     // Check if it exists as a child account
     const { data: childAccount } = await supabase
       .from('customer_child_accounts')
-      .select('child_ps_account_id, customer_ps_id, customers!customer_child_accounts_customer_ps_id_fkey(customer_name)')
+      .select('child_ps_account_id')
       .eq('child_ps_account_id', upperValue)
       .maybeSingle()
 
     if (childAccount) {
-      const parentName = (childAccount.customers as any)?.customer_name || 'another customer'
+      const parentName = 'another customer'
       setError(`This Customer ID is already a child account of ${parentName}`)
       setIsAvailable(false)
       return

@@ -88,7 +88,7 @@ export interface Customer {
   default_carrier: string | null
   default_ship_via: string | null
   default_shipto_name: string | null
-  is_active: boolean
+  is_active: boolean | null
   order_header_prompt: string | null
   order_line_prompt: string | null
   MultiAccount_Prompt: string | null
@@ -103,6 +103,8 @@ export interface CSR {
 export interface Carrier {
   carrier_id: string
   carrier_descr: string
+  ship_via_code: string
+  ship_via_desc: string
 }
 
 export interface ShipVia {
