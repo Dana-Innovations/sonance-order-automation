@@ -289,6 +289,9 @@ export type Database = {
           sender_email: string
           sharepoint_folder_id: string | null
           Folder_ID_Proc: string | null
+          default_carrier: string | null
+          default_ship_via: string | null
+          default_shipto_name: string | null
           updated_at: string | null
         }
         Insert: {
@@ -304,6 +307,9 @@ export type Database = {
           sender_email: string
           sharepoint_folder_id?: string | null
           Folder_ID_Proc?: string | null
+          default_carrier?: string | null
+          default_ship_via?: string | null
+          default_shipto_name?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -319,6 +325,9 @@ export type Database = {
           sender_email?: string
           sharepoint_folder_id?: string | null
           Folder_ID_Proc?: string | null
+          default_carrier?: string | null
+          default_ship_via?: string | null
+          default_shipto_name?: string | null
           updated_at?: string | null
         }
         Relationships: [
