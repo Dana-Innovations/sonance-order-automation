@@ -123,7 +123,7 @@ export default async function WizardLandingPage() {
           <h2 className="text-lg font-semibold text-[#333F48] mb-4">Continue In-Progress Setup</h2>
           <div className="space-y-3">
             {draftSessions.map((session) => (
-              <DraftSessionCard key={session.id} session={session} />
+              <DraftSessionCard key={session.id} session={{ ...session, wizard_step: session.wizard_step ?? 0 }} />
             ))}
           </div>
         </div>
