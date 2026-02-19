@@ -4,7 +4,7 @@ export interface WizardSession {
   id: string
   user_id: string
   customer_name: string | null
-  status: 'draft' | 'generating' | 'completed'
+  status: 'draft' | 'generating' | 'completed' | 'error'
   is_customer_wizard: boolean
   wizard_step: number
   customer_data: CustomerData
