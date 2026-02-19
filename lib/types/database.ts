@@ -730,7 +730,7 @@ export type Database = {
           id: string
           user_id: string
           title: string
-          status: string
+          status: 'draft' | 'generating' | 'completed' | 'error'
           is_customer_wizard: boolean | null
           wizard_step: number | null
           customer_data: Record<string, any> | null
@@ -745,7 +745,7 @@ export type Database = {
           id?: string
           user_id: string
           title?: string
-          status?: string
+          status?: 'draft' | 'generating' | 'completed' | 'error'
           is_customer_wizard?: boolean | null
           wizard_step?: number | null
           customer_data?: Record<string, any> | null
@@ -760,7 +760,7 @@ export type Database = {
           id?: string
           user_id?: string
           title?: string
-          status?: string
+          status?: 'draft' | 'generating' | 'completed' | 'error'
           is_customer_wizard?: boolean | null
           wizard_step?: number | null
           customer_data?: Record<string, any> | null
