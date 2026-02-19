@@ -725,6 +725,72 @@ export type Database = {
         }
         Relationships: []
       }
+      prompt_builder_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          status: string
+          is_customer_wizard: boolean | null
+          wizard_step: number | null
+          customer_data: Record<string, any> | null
+          child_accounts: Record<string, any>[] | null
+          question_answers: Record<string, any>[] | null
+          generated_prompts: Record<string, any> | null
+          customer_name: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title?: string
+          status?: string
+          is_customer_wizard?: boolean | null
+          wizard_step?: number | null
+          customer_data?: Record<string, any> | null
+          child_accounts?: Record<string, any>[] | null
+          question_answers?: Record<string, any>[] | null
+          generated_prompts?: Record<string, any> | null
+          customer_name?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          status?: string
+          is_customer_wizard?: boolean | null
+          wizard_step?: number | null
+          customer_data?: Record<string, any> | null
+          child_accounts?: Record<string, any>[] | null
+          question_answers?: Record<string, any>[] | null
+          generated_prompts?: Record<string, any> | null
+          customer_name?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      processed_messages: {
+        Row: {
+          id: number
+          message_id: string
+          processed_at: string | null
+        }
+        Insert: {
+          id?: never
+          message_id: string
+          processed_at?: string | null
+        }
+        Update: {
+          id?: never
+          message_id?: string
+          processed_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
