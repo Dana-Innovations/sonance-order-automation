@@ -1446,7 +1446,7 @@ export function OrderLinesTable({
               Go Back
             </button>
             <button
-              onClick={handleCancelLine}
+              onClick={() => handleCancelLine(cancellingLine)}
               disabled={isCancelling}
               className="font-medium transition-colors"
               style={{
