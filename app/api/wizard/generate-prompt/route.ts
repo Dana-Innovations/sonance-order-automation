@@ -101,7 +101,7 @@ function buildOrderHeaderMetaPrompt(
   const defaultShipVia = session.customer_data?.default_ship_via || ''
 
   const answersText = questionAnswers
-    .map(qa => `Q: ${qa.question_text}\nA: ${qa.text_answer}`)
+    .map((qa: any) => `Q: ${qa.question_text}\nA: ${qa.text_answer}`)
     .join('\n\n')
 
   return `You are an AI prompt engineer creating a data extraction prompt for an n8n workflow that processes PDF orders.
@@ -149,7 +149,7 @@ function buildOrderLineMetaPrompt(
   const customerName = session.customer_data?.customer_name || 'this customer'
 
   const answersText = questionAnswers
-    .map(qa => `Q: ${qa.question_text}\nA: ${qa.text_answer}`)
+    .map((qa: any) => `Q: ${qa.question_text}\nA: ${qa.text_answer}`)
     .join('\n\n')
 
   return `You are an AI prompt engineer creating a data extraction prompt for an n8n workflow that processes PDF orders.
@@ -195,11 +195,11 @@ function buildAccountRoutingMetaPrompt(
   const childAccounts = session.child_accounts || []
 
   const accountsList = childAccounts
-    .map(acc => `- ${acc.ps_account_id}: ${acc.routing_description}`)
+    .map((acc: any) => `- ${acc.ps_account_id}: ${acc.routing_description}`)
     .join('\n')
 
   const answersText = questionAnswers
-    .map(qa => `Q: ${qa.question_text}\nA: ${qa.text_answer}`)
+    .map((qa: any) => `Q: ${qa.question_text}\nA: ${qa.text_answer}`)
     .join('\n\n')
 
   return `You are an AI prompt engineer creating a routing prompt for an n8n workflow that processes PDF orders.
