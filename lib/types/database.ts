@@ -773,6 +773,69 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_child_accounts: {
+        Row: {
+          id: string
+          parent_customer_id: string
+          child_ps_account_id: string
+          routing_description: string
+          display_order: number
+          is_active: boolean | null
+          ai_mapping_instructions: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          parent_customer_id: string
+          child_ps_account_id: string
+          routing_description: string
+          display_order?: number
+          is_active?: boolean | null
+          ai_mapping_instructions?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          parent_customer_id?: string
+          child_ps_account_id?: string
+          routing_description?: string
+          display_order?: number
+          is_active?: boolean | null
+          ai_mapping_instructions?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      api_keys: {
+        Row: {
+          id: string
+          user_id: string
+          service_name: string
+          api_key: string
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          service_name: string
+          api_key: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          service_name?: string
+          api_key?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       processed_messages: {
         Row: {
           id: number
