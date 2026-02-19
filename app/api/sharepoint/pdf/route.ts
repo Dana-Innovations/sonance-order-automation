@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Client } from '@microsoft/microsoft-graph-client'
+import { Client, ResponseType } from '@microsoft/microsoft-graph-client'
 import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials'
 import { ClientSecretCredential } from '@azure/identity'
 import { createClient } from '@/lib/supabase/server'
@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
 
         const response = await client
           .api(apiPath)
-          .responseType('arraybuffer')
+          .responseType(ResponseType.ARRAYBUFFER)
           .get()
 
         // Success! Convert to Buffer and return
