@@ -1,7 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function POST() {
+  // Verify user is authenticated before allowing any migration to run
+  const authClient = await createServerClient()
+  const { data: { user } } = await authClient.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
@@ -60,9 +68,10 @@ CREATE INDEX idx_order_lines_line_status ON order_lines(line_status);
       message: 'Migration completed successfully!'
     })
   } catch (error: any) {
+    console.error('Migration error:', error)
     return NextResponse.json({
       success: false,
-      error: error.message
+      error: 'Migration failed'
     }, { status: 500 })
   }
 }

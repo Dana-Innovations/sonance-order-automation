@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     if (customerError) {
       console.error('Error creating customer:', customerError)
       return NextResponse.json(
-        { error: `Failed to create customer: ${customerError.message}` },
+        { error: 'Failed to create customer' },
         { status: 500 }
       )
     }
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
           .eq('customer_name', customerData.customer_name)
 
         return NextResponse.json(
-          { error: `Failed to create child accounts: ${childAccountsError.message}` },
+          { error: 'Failed to create child accounts' },
           { status: 500 }
         )
       }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Client } from '@microsoft/microsoft-graph-client'
 import { TokenCredentialAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials'
 import { ClientSecretCredential } from '@azure/identity'
+import { createClient } from '@/lib/supabase/server'
 
 /**
  * Extract the site-relative path from a SharePoint URL
@@ -73,6 +74,13 @@ function extractFilename(path: string): string {
 }
 
 export async function GET(request: NextRequest) {
+  // Verify user is authenticated before accessing SharePoint
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const searchParams = request.nextUrl.searchParams
   const sharePointUrl = searchParams.get('url')
 
@@ -124,7 +132,7 @@ export async function GET(request: NextRequest) {
     // Generate path variations to try
     const pathVariations = generatePathVariations(originalFilePath)
     
-    console.log('SharePoint PDF fetch - trying path variations:', pathVariations)
+    console.log('SharePoint PDF fetch - attempting retrieval')
 
     let lastError: any = null
     
@@ -134,7 +142,7 @@ export async function GET(request: NextRequest) {
         const encodedPath = encodePathForGraphAPI(filePath)
         const apiPath = `/sites/${process.env.SHAREPOINT_SITE_ID}/drive/root:${encodedPath}:/content`
         
-        console.log('Trying Graph API path:', apiPath)
+        console.log('Trying Graph API path variation')
 
         const response = await client
           .api(apiPath)
@@ -144,7 +152,7 @@ export async function GET(request: NextRequest) {
         // Success! Convert to Buffer and return
         const buffer = Buffer.from(response)
         
-        console.log('Successfully fetched PDF with path:', filePath)
+        console.log('Successfully fetched PDF')
 
         return new NextResponse(buffer, {
           headers: {
@@ -154,7 +162,7 @@ export async function GET(request: NextRequest) {
           },
         })
       } catch (error: any) {
-        console.log(`Path "${filePath}" failed with status ${error.statusCode}:`, error.message || 'No message')
+        console.log(`Path variation failed with status ${error.statusCode}`)
         lastError = error
         
         // If it's not a 404, don't try other paths (it's likely a permission issue)
@@ -167,24 +175,17 @@ export async function GET(request: NextRequest) {
 
     // All paths failed, return appropriate error
     console.error('SharePoint PDF fetch error - all paths failed:', {
-      message: lastError?.message,
       code: lastError?.code,
       statusCode: lastError?.statusCode,
-      originalPath: originalFilePath,
-      triedPaths: pathVariations,
     })
-    
+
     if (lastError?.statusCode === 404) {
       return NextResponse.json(
-        { 
-          error: 'PDF file not found in SharePoint', 
-          path: originalFilePath,
-          triedPaths: pathVariations,
-        },
+        { error: 'PDF file not found in SharePoint' },
         { status: 404 }
       )
     }
-    
+
     if (lastError?.statusCode === 401 || lastError?.statusCode === 403) {
       return NextResponse.json(
         { error: 'Not authorized to access SharePoint. Check app permissions.' },
@@ -193,18 +194,17 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: 'Failed to fetch PDF from SharePoint', details: lastError?.message },
+      { error: 'Failed to fetch PDF from SharePoint' },
       { status: 500 }
     )
   } catch (error: any) {
     console.error('SharePoint PDF fetch error:', {
-      message: error.message,
       code: error.code,
       statusCode: error.statusCode,
     })
 
     return NextResponse.json(
-      { error: 'Failed to fetch PDF from SharePoint', details: error.message },
+      { error: 'Failed to fetch PDF from SharePoint' },
       { status: 500 }
     )
   }

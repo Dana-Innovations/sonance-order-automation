@@ -26,7 +26,7 @@ export async function GET(
 
     if (error) {
       console.error('Error fetching child accounts:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: 'An error occurred' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, child_accounts: childAccounts || [] })
@@ -78,7 +78,7 @@ export async function POST(
 
     if (customerError) {
       console.error('Error fetching parent customer:', customerError)
-      return NextResponse.json({ error: `Database error: ${customerError.message}` }, { status: 500 })
+      return NextResponse.json({ error: 'An error occurred' }, { status: 500 })
     }
 
     if (!customer) {

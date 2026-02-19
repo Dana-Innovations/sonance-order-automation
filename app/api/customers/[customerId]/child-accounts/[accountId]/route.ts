@@ -85,7 +85,7 @@ export async function PATCH(
 
     if (updateError) {
       console.error('Error updating child account:', updateError)
-      return NextResponse.json({ error: updateError.message }, { status: 500 })
+      return NextResponse.json({ error: 'An error occurred' }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -96,7 +96,7 @@ export async function PATCH(
     })
   } catch (error: any) {
     console.error('Error in PATCH child account:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'An error occurred' }, { status: 500 })
   }
 }
 
@@ -135,7 +135,7 @@ export async function DELETE(
       .eq('parent_customer_id', customerId)
 
     if (countError) {
-      return NextResponse.json({ error: countError.message }, { status: 500 })
+      return NextResponse.json({ error: 'An error occurred' }, { status: 500 })
     }
 
     if (allAccounts && allAccounts.length <= 2) {
@@ -163,7 +163,7 @@ export async function DELETE(
 
     if (deleteError) {
       console.error('Error deleting child account:', deleteError)
-      return NextResponse.json({ error: deleteError.message }, { status: 500 })
+      return NextResponse.json({ error: 'An error occurred' }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -175,6 +175,6 @@ export async function DELETE(
     })
   } catch (error: any) {
     console.error('Error in DELETE child account:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'An error occurred' }, { status: 500 })
   }
 }

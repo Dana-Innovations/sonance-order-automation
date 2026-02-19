@@ -2,9 +2,13 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
-  // Skip auth entirely in dev when DISABLE_AUTH is set
+  // Skip auth in development only — NEVER in production
   if (process.env.DISABLE_AUTH === 'true') {
-    return NextResponse.next({ request })
+    if (process.env.NODE_ENV === 'production') {
+      console.error('CRITICAL: DISABLE_AUTH=true is not allowed in production. Auth will be enforced.')
+    } else {
+      return NextResponse.next({ request })
+    }
   }
 
   let supabaseResponse = NextResponse.next({
