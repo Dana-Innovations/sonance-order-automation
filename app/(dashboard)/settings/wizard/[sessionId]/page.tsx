@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { WizardFlow } from '@/components/wizard/WizardFlow'
+import type { WizardSession } from '@/lib/types/wizard'
 
 interface WizardPageProps {
   params: Promise<{
@@ -33,8 +34,18 @@ export default async function WizardSessionPage({ params }: WizardPageProps) {
     notFound()
   }
 
+  // Coerce nullable DB fields to the non-nullable WizardSession shape
+  const wizardSession: WizardSession = {
+    ...session,
+    is_customer_wizard: session.is_customer_wizard ?? false,
+    wizard_step: session.wizard_step ?? 0,
+    customer_data: (session.customer_data as WizardSession['customer_data']) ?? {},
+    child_accounts: (session.child_accounts as WizardSession['child_accounts']) ?? [],
+    question_answers: (session.question_answers as WizardSession['question_answers']) ?? [],
+  }
+
   // Get current step from session
-  const currentStep = session.wizard_step || 0
+  const currentStep = wizardSession.wizard_step
   // Total steps: 0-15 (16 steps) - routing questions/prompt for multi-account can be added later
   const totalSteps = 16
 
@@ -51,7 +62,7 @@ export default async function WizardSessionPage({ params }: WizardPageProps) {
               <div>
                 <h1 className="text-lg font-semibold text-[#333F48]">Customer Setup Wizard</h1>
                 <p className="text-xs text-[#6b7a85]">
-                  {session.customer_data?.customer_name || 'New Customer'}
+                  {wizardSession.customer_data?.customer_name || 'New Customer'}
                 </p>
               </div>
             </div>
@@ -79,7 +90,7 @@ export default async function WizardSessionPage({ params }: WizardPageProps) {
       <div className="max-w-md mx-auto px-6 py-8">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
           {/* Wizard Flow Component */}
-          <WizardFlow initialSession={session} />
+          <WizardFlow initialSession={wizardSession} />
         </div>
       </div>
     </div>
