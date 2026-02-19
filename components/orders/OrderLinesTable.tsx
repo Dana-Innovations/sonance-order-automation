@@ -1485,8 +1485,8 @@ export function OrderLinesTable({
       <div
         style={{
           position: 'fixed',
-          left: `${debugPosition.x + 20}px`,
-          top: `${debugPosition.y + 20}px`,
+          left: `${debugPosition!.x + 20}px`,
+          top: `${debugPosition!.y + 20}px`,
           backgroundColor: '#1e293b',
           color: '#22d3ee',
           padding: '12px 16px',
