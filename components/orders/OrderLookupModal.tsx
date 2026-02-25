@@ -95,7 +95,6 @@ export function OrderLookupModal({ userEmail, onClose }: OrderLookupModalProps) 
         ]
 
         const trimmed = debouncedQuery.trim()
-        const parsedNum = Number(trimmed)
 
         let query = supabase
           .from('orders')
@@ -103,11 +102,7 @@ export function OrderLookupModal({ userEmail, onClose }: OrderLookupModalProps) 
           .in('ps_customer_id', allAccountIds)
           .limit(25)
 
-        if (!isNaN(parsedNum) && trimmed !== '') {
-          query = query.or(`cust_order_number.ilike.%${trimmed}%,ps_order_number.eq.${parsedNum}`)
-        } else {
-          query = query.ilike('cust_order_number', `%${trimmed}%`)
-        }
+        query = query.or(`cust_order_number.ilike.%${trimmed}%,ps_order_number::text.ilike.%${trimmed}%`)
 
         const { data, error: queryError } = await query.order('cust_order_date', { ascending: false })
 
