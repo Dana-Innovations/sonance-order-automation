@@ -11,16 +11,20 @@ export function OrderList({ userEmail }: { userEmail: string }) {
   const [statusFilter, setStatusFilter] = useState<string[]>(['01', '02', '03'])
   const [csrFilter, setCsrFilter] = useState('')
   const [customerSearch, setCustomerSearch] = useState('')
+  const [customerIdFilter, setCustomerIdFilter] = useState('')
+  const [orderSearch, setOrderSearch] = useState('')
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
   const [page, setPage] = useState(1)
-  const pageSize = 50
+  const pageSize = 20
 
   const { data: orders, isLoading, error } = useOrders({
     userEmail,
     statusFilter,
     csrFilter,
     customerSearch,
+    customerIdFilter,
+    orderSearch,
     dateFrom,
     dateTo,
     page,
@@ -65,6 +69,15 @@ export function OrderList({ userEmail }: { userEmail: string }) {
         customerSearch={customerSearch}
         onCustomerSearchChange={(search) => {
           setCustomerSearch(search)
+          setPage(1)
+        }}
+        onCustomerIdFilterChange={(id) => {
+          setCustomerIdFilter(id)
+          setPage(1)
+        }}
+        orderSearch={orderSearch}
+        onOrderSearchChange={(search) => {
+          setOrderSearch(search)
           setPage(1)
         }}
         dateFrom={dateFrom}

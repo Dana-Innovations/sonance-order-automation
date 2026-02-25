@@ -12,6 +12,9 @@ export function OrderFilters({
   onCsrFilterChange,
   customerSearch,
   onCustomerSearchChange,
+  onCustomerIdFilterChange,
+  orderSearch,
+  onOrderSearchChange,
   dateFrom,
   onDateFromChange,
   dateTo,
@@ -23,6 +26,9 @@ export function OrderFilters({
   onCsrFilterChange: (csr: string) => void
   customerSearch: string
   onCustomerSearchChange: (search: string) => void
+  onCustomerIdFilterChange: (id: string) => void
+  orderSearch: string
+  onOrderSearchChange: (search: string) => void
   dateFrom: string
   onDateFromChange: (date: string) => void
   dateTo: string
@@ -125,10 +131,12 @@ export function OrderFilters({
       // "All Customers" selected
       setCustomerInputValue(ALL_CUSTOMERS_VALUE)
       onCustomerSearchChange('')
+      onCustomerIdFilterChange('')
     } else {
       const displayValue = customer.customer_name || customer.ps_customer_id
       setCustomerInputValue(displayValue)
       onCustomerSearchChange(displayValue)
+      onCustomerIdFilterChange(customer.ps_customer_id)
     }
     setIsSearching(false) // Reset search mode when selection is made
     setIsCustomerDropdownOpen(false)
@@ -137,6 +145,7 @@ export function OrderFilters({
   const handleCustomerInputChange = (value: string) => {
     setCustomerInputValue(value)
     setIsSearching(true) // User is actively typing to search
+    onCustomerIdFilterChange('') // Clear ID filter when typing free text
     // If user clears the input or types "All Customers", don't filter
     if (value === '' || value === ALL_CUSTOMERS_VALUE) {
       onCustomerSearchChange('')
@@ -182,13 +191,15 @@ export function OrderFilters({
     onCsrFilterChange('')
     setCsrInputValue(ALL_CSRS_VALUE)
     onCustomerSearchChange('')
+    onCustomerIdFilterChange('')
     setCustomerInputValue(ALL_CUSTOMERS_VALUE)
+    onOrderSearchChange('')
     onDateFromChange('')
     onDateToChange('')
   }
 
   const activeFilterCount =
-    statusFilter.length + (csrFilter ? 1 : 0) + (customerSearch ? 1 : 0) + (dateFrom || dateTo ? 1 : 0)
+    statusFilter.length + (csrFilter ? 1 : 0) + (customerSearch ? 1 : 0) + (orderSearch ? 1 : 0) + (dateFrom || dateTo ? 1 : 0)
 
   return (
     <div className="rounded-md shadow-sm border border-gray-200 bg-white p-6" style={{ paddingLeft: '30px', paddingBottom: '27px' }}>
@@ -477,6 +488,34 @@ export function OrderFilters({
                 className="w-full border border-[#D9D9D6] bg-white px-3 text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-2 focus:ring-[#00A3E1]/20 transition-colors"
                 style={{ height: '38px', borderRadius: '6px', fontFamily: 'Montserrat, sans-serif', fontSize: '14px' }}
               />
+            </div>
+          </div>
+
+          {/* Order Number Search */}
+          <div style={{ width: '30%' }}>
+            <label className="block text-xs uppercase tracking-widest text-[#333F48] mb-3" style={{ fontWeight: 700 }}>
+              Order Number
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={orderSearch}
+                onChange={(e) => onOrderSearchChange(e.target.value)}
+                placeholder="Search by cust or PS order #..."
+                className="flex-1 border border-[#D9D9D6] bg-white px-3 text-[#333F48] placeholder:text-[#8f999f] focus:border-[#00A3E1] focus:outline-none focus:ring-2 focus:ring-[#00A3E1]/20 transition-colors"
+                style={{ height: '38px', borderRadius: '6px', fontFamily: 'Montserrat, sans-serif', fontSize: '14px' }}
+              />
+              {orderSearch && (
+                <button
+                  type="button"
+                  onClick={() => onOrderSearchChange('')}
+                  className="px-2 border border-[#D9D9D6] bg-white hover:bg-[#F5F5F5] transition-colors"
+                  style={{ height: '38px', borderRadius: '6px' }}
+                >
+                  <X className="h-4 w-4 text-[#8f999f]" />
+                </button>
+              )}
+              <Search className="h-5 w-5 text-[#00A3E1] shrink-0" />
             </div>
           </div>
         </div>

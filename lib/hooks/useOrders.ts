@@ -16,15 +16,19 @@ export function useOrders({
   statusFilter,
   csrFilter,
   customerSearch,
+  customerIdFilter = '',
+  orderSearch = '',
   dateFrom,
   dateTo,
   page = 1,
-  pageSize = 50,
+  pageSize = 20,
 }: {
   userEmail: string
   statusFilter: string[]
   csrFilter: string
   customerSearch: string
+  customerIdFilter?: string
+  orderSearch?: string
   dateFrom: string
   dateTo: string
   page?: number
@@ -33,7 +37,7 @@ export function useOrders({
   const supabase = createClient()
 
   return useQuery({
-    queryKey: ['orders', userEmail, statusFilter, csrFilter, customerSearch, dateFrom, dateTo],
+    queryKey: ['orders', userEmail, statusFilter, csrFilter, customerSearch, customerIdFilter, orderSearch, dateFrom, dateTo],
     queryFn: async () => {
       // Get customers assigned to this CSR (using csr_id on customers table)
       const { data: customers } = await supabase
@@ -51,7 +55,7 @@ export function useOrders({
       // For multi-account customers, also get child account IDs
       const { data: childAccounts } = await supabase
         .from('customer_child_accounts')
-        .select('child_ps_account_id')
+        .select('parent_customer_id, child_ps_account_id')
         .in('parent_customer_id', customerUuids)
 
       // Combine parent and child account IDs
@@ -60,11 +64,25 @@ export function useOrders({
         ...(childAccounts?.map((ca) => ca.child_ps_account_id) || [])
       ]
 
+      // When a specific customer is selected from the dropdown, narrow to that
+      // customer's parent account + its child accounts only.
+      let accountIdsToQuery = allAccountIds
+      if (customerIdFilter) {
+        const selectedCustomer = customers.find(c => c.ps_customer_id === customerIdFilter)
+        const selectedChildIds = selectedCustomer
+          ? (childAccounts?.filter(ca => ca.parent_customer_id === selectedCustomer.customer_id)
+              .map(ca => ca.child_ps_account_id) || [])
+          : []
+        const targetIds = [customerIdFilter, ...selectedChildIds]
+        // Only include IDs that are actually in the authorized set
+        accountIdsToQuery = targetIds.filter(id => allAccountIds.includes(id))
+      }
+
       // Build query - using manual joins since foreign keys might not be set up
       let query = supabase
         .from('orders')
         .select('*')
-        .in('ps_customer_id', allAccountIds)
+        .in('ps_customer_id', accountIdsToQuery)
 
       // Apply filters
       if (statusFilter.length > 0) {
@@ -76,7 +94,8 @@ export function useOrders({
         query = query.eq('csr_id', csrFilter)
       }
 
-      if (customerSearch) {
+      // Free-text search on customername only when no specific customer is selected
+      if (!customerIdFilter && customerSearch) {
         query = query.ilike('customername', `%${customerSearch}%`)
       }
 
@@ -86,6 +105,18 @@ export function useOrders({
 
       if (dateTo) {
         query = query.lte('cust_order_date', dateTo)
+      }
+
+      if (orderSearch) {
+        const trimmed = orderSearch.trim()
+        const parsedNum = Number(trimmed)
+        if (!isNaN(parsedNum) && trimmed !== '') {
+          // Could be a PS order number (numeric) or a numeric cust order number — search both
+          query = query.or(`cust_order_number.ilike.%${trimmed}%,ps_order_number.eq.${parsedNum}`)
+        } else {
+          // Text-only — search customer order number
+          query = query.ilike('cust_order_number', `%${trimmed}%`)
+        }
       }
 
       query = query.order('created_at', { ascending: false })
