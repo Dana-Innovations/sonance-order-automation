@@ -3,6 +3,7 @@
 import { useOrders } from '@/lib/hooks/useOrders'
 import { OrderTable } from './OrderTable'
 import { OrderFilters } from './OrderFilters'
+import { OrderLookupModal } from './OrderLookupModal'
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 
@@ -12,7 +13,7 @@ export function OrderList({ userEmail }: { userEmail: string }) {
   const [csrFilter, setCsrFilter] = useState('')
   const [customerSearch, setCustomerSearch] = useState('')
   const [customerIdFilter, setCustomerIdFilter] = useState('')
-  const [orderSearch, setOrderSearch] = useState('')
+  const [isOrderLookupOpen, setIsOrderLookupOpen] = useState(false)
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
   const [page, setPage] = useState(1)
@@ -24,7 +25,6 @@ export function OrderList({ userEmail }: { userEmail: string }) {
     csrFilter,
     customerSearch,
     customerIdFilter,
-    orderSearch,
     dateFrom,
     dateTo,
     page,
@@ -55,6 +55,12 @@ export function OrderList({ userEmail }: { userEmail: string }) {
 
   return (
     <div className="space-y-5">
+      {isOrderLookupOpen && (
+        <OrderLookupModal
+          userEmail={userEmail}
+          onClose={() => setIsOrderLookupOpen(false)}
+        />
+      )}
       <OrderFilters
         statusFilter={statusFilter}
         onStatusFilterChange={(filters) => {
@@ -75,11 +81,7 @@ export function OrderList({ userEmail }: { userEmail: string }) {
           setCustomerIdFilter(id)
           setPage(1)
         }}
-        orderSearch={orderSearch}
-        onOrderSearchChange={(search) => {
-          setOrderSearch(search)
-          setPage(1)
-        }}
+        onOrderLookup={() => setIsOrderLookupOpen(true)}
         dateFrom={dateFrom}
         onDateFromChange={(date) => {
           setDateFrom(date)

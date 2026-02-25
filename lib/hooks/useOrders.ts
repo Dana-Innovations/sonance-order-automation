@@ -17,7 +17,6 @@ export function useOrders({
   csrFilter,
   customerSearch,
   customerIdFilter = '',
-  orderSearch = '',
   dateFrom,
   dateTo,
   page = 1,
@@ -28,7 +27,6 @@ export function useOrders({
   csrFilter: string
   customerSearch: string
   customerIdFilter?: string
-  orderSearch?: string
   dateFrom: string
   dateTo: string
   page?: number
@@ -37,7 +35,7 @@ export function useOrders({
   const supabase = createClient()
 
   return useQuery({
-    queryKey: ['orders', userEmail, statusFilter, csrFilter, customerSearch, customerIdFilter, orderSearch, dateFrom, dateTo],
+    queryKey: ['orders', userEmail, statusFilter, csrFilter, customerSearch, customerIdFilter, dateFrom, dateTo],
     queryFn: async () => {
       // Get customers assigned to this CSR (using csr_id on customers table)
       const { data: customers } = await supabase
@@ -105,18 +103,6 @@ export function useOrders({
 
       if (dateTo) {
         query = query.lte('cust_order_date', dateTo)
-      }
-
-      if (orderSearch) {
-        const trimmed = orderSearch.trim()
-        const parsedNum = Number(trimmed)
-        if (!isNaN(parsedNum) && trimmed !== '') {
-          // Could be a PS order number (numeric) or a numeric cust order number — search both
-          query = query.or(`cust_order_number.ilike.%${trimmed}%,ps_order_number.eq.${parsedNum}`)
-        } else {
-          // Text-only — search customer order number
-          query = query.ilike('cust_order_number', `%${trimmed}%`)
-        }
       }
 
       query = query.order('created_at', { ascending: false })
