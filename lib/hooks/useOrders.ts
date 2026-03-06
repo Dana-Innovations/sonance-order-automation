@@ -35,7 +35,7 @@ export function useOrders({
   const supabase = createClient()
 
   // TEMPORARY: When NEXT_PUBLIC_SHOW_ALL_ORDERS=true, bypass CSR filter so everyone sees all orders
-  const showAllOrders = process.env.NEXT_PUBLIC_SHOW_ALL_ORDERS === 'true'
+  const showAllOrders = process.env.NEXT_PUBLIC_SHOW_ALL_ORDERS?.trim() === 'true'
 
   return useQuery({
     queryKey: ['orders', userEmail, statusFilter, csrFilter, customerSearch, customerIdFilter, dateFrom, dateTo, showAllOrders],
