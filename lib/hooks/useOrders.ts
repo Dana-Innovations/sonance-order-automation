@@ -34,53 +34,63 @@ export function useOrders({
 }) {
   const supabase = createClient()
 
+  // TEMPORARY: When NEXT_PUBLIC_SHOW_ALL_ORDERS=true, bypass CSR filter so everyone sees all orders
+  const showAllOrders = process.env.NEXT_PUBLIC_SHOW_ALL_ORDERS === 'true'
+
   return useQuery({
-    queryKey: ['orders', userEmail, statusFilter, csrFilter, customerSearch, customerIdFilter, dateFrom, dateTo],
+    queryKey: ['orders', userEmail, statusFilter, csrFilter, customerSearch, customerIdFilter, dateFrom, dateTo, showAllOrders],
     queryFn: async () => {
-      // Get customers assigned to this CSR (using csr_id on customers table)
-      const { data: customers } = await supabase
-        .from('customers')
-        .select('customer_id, ps_customer_id')
-        .eq('csr_id', userEmail)
+      let accountIdsToQuery: string[] | null = null
 
-      if (!customers || customers.length === 0) {
-        return []
+      if (!showAllOrders) {
+        // Get customers assigned to this CSR (using csr_id on customers table)
+        const { data: customers } = await supabase
+          .from('customers')
+          .select('customer_id, ps_customer_id')
+          .eq('csr_id', userEmail)
+
+        if (!customers || customers.length === 0) {
+          return []
+        }
+
+        const customerIds = customers.map((c) => c.ps_customer_id)
+        const customerUuids = customers.map((c) => c.customer_id)
+
+        // For multi-account customers, also get child account IDs
+        const { data: childAccounts } = await supabase
+          .from('customer_child_accounts')
+          .select('parent_customer_id, child_ps_account_id')
+          .in('parent_customer_id', customerUuids)
+
+        // Combine parent and child account IDs
+        const allAccountIds = [
+          ...customerIds,
+          ...(childAccounts?.map((ca) => ca.child_ps_account_id) || [])
+        ]
+
+        // When a specific customer is selected from the dropdown, narrow to that
+        // customer's parent account + its child accounts only.
+        let idsToQuery = allAccountIds
+        if (customerIdFilter) {
+          const selectedCustomer = customers.find(c => c.ps_customer_id === customerIdFilter)
+          const selectedChildIds = selectedCustomer
+            ? (childAccounts?.filter(ca => ca.parent_customer_id === selectedCustomer.customer_id)
+                .map(ca => ca.child_ps_account_id) || [])
+            : []
+          const targetIds = [customerIdFilter, ...selectedChildIds]
+          idsToQuery = targetIds.filter(id => allAccountIds.includes(id))
+        }
+        accountIdsToQuery = idsToQuery
       }
 
-      const customerIds = customers.map((c) => c.ps_customer_id)
-      const customerUuids = customers.map((c) => c.customer_id)
-
-      // For multi-account customers, also get child account IDs
-      const { data: childAccounts } = await supabase
-        .from('customer_child_accounts')
-        .select('parent_customer_id, child_ps_account_id')
-        .in('parent_customer_id', customerUuids)
-
-      // Combine parent and child account IDs
-      const allAccountIds = [
-        ...customerIds,
-        ...(childAccounts?.map((ca) => ca.child_ps_account_id) || [])
-      ]
-
-      // When a specific customer is selected from the dropdown, narrow to that
-      // customer's parent account + its child accounts only.
-      let accountIdsToQuery = allAccountIds
-      if (customerIdFilter) {
-        const selectedCustomer = customers.find(c => c.ps_customer_id === customerIdFilter)
-        const selectedChildIds = selectedCustomer
-          ? (childAccounts?.filter(ca => ca.parent_customer_id === selectedCustomer.customer_id)
-              .map(ca => ca.child_ps_account_id) || [])
-          : []
-        const targetIds = [customerIdFilter, ...selectedChildIds]
-        // Only include IDs that are actually in the authorized set
-        accountIdsToQuery = targetIds.filter(id => allAccountIds.includes(id))
-      }
-
-      // Build query - using manual joins since foreign keys might not be set up
+      // Build query - when showAllOrders, no ps_customer_id filter
       let query = supabase
         .from('orders')
         .select('*')
-        .in('ps_customer_id', accountIdsToQuery)
+
+      if (accountIdsToQuery !== null) {
+        query = query.in('ps_customer_id', accountIdsToQuery)
+      }
 
       // Apply filters
       if (statusFilter.length > 0) {
