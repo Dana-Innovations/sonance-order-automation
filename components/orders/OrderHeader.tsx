@@ -144,6 +144,7 @@ export function OrderHeader({
   if (!order.cust_shipto_postal_code) missingRequiredFields.push('Postal Code')
   if (!order.cust_carrier) missingRequiredFields.push('Carrier')
   if (!order.cust_ship_via) missingRequiredFields.push('Ship Via')
+  if (order.customers?.is_multi_territory && !order.ps_shipto_customer_id) missingRequiredFields.push('Ship-To Acct ID')
 
   const hasMissingFields = missingRequiredFields.length > 0
 
@@ -274,6 +275,37 @@ export function OrderHeader({
   useEffect(() => {
     setShipToCustomerId(order.ps_shipto_customer_id || '')
   }, [order.ps_shipto_customer_id])
+
+  // Handle immediate save of Ship-To Acct ID (for multi-territory dropdown)
+  const handleShipToCustomerIdChange = async (newValue: string) => {
+    setShipToCustomerId(newValue)
+
+    const oldValue = order.ps_shipto_customer_id || null
+    const updatedValue = newValue.trim() || null
+
+    const { error } = await supabase
+      .from('orders')
+      .update({ ps_shipto_customer_id: updatedValue })
+      .eq('id', order.id)
+
+    if (error) {
+      alert('Error saving Ship-To Acct ID: ' + error.message)
+      setShipToCustomerId(order.ps_shipto_customer_id || '')
+      return
+    }
+
+    // Log to audit_log
+    await supabase.from('audit_log').insert({
+      order_id: order.id,
+      user_id: userId,
+      action_type: 'field_edit',
+      field_name: 'ps_shipto_customer_id',
+      old_value: oldValue,
+      new_value: updatedValue,
+    })
+
+    router.refresh()
+  }
 
   // Apply default carrier
   const handleApplyDefaultCarrier = async () => {
@@ -585,50 +617,72 @@ export function OrderHeader({
             <tr>
               <td></td>
               <td></td>
-              <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', whiteSpace: 'nowrap' }}>Ship-To Acct ID</td>
-              <td style={{ color: '#333F48', paddingRight: '24px', position: 'relative' }}>
-                {isEditing && order.customers?.is_multi_territory ? (
-                  <select
-                    value={shipToCustomerId}
-                    onChange={(e) => setShipToCustomerId(e.target.value)}
-                    style={{
-                      fontSize: '14px',
-                      padding: '2px 4px',
-                      border: '1px solid #ccc',
-                      borderRadius: '4px',
-                      backgroundColor: 'white',
-                      minWidth: '120px'
-                    }}
-                  >
-                    <option value="">-- Select Ship-To --</option>
-                    {territoryShipToOptions.map((option) => (
-                      <option key={option.id} value={option.shipto_ps_customer_id}>
-                        {option.shipto_ps_customer_id} - {option.city}, {option.state}
-                      </option>
-                    ))}
-                  </select>
-                ) : isEditing ? (
-                  <input
-                    type="text"
-                    value={shipToCustomerId}
-                    onChange={(e) => setShipToCustomerId(e.target.value)}
-                    style={{
-                      fontSize: '14px',
-                      padding: '2px 4px',
-                      border: '1px solid #ccc',
-                      borderRadius: '4px',
-                      minWidth: '120px'
-                    }}
-                    placeholder="Enter ship-to customer ID"
-                  />
-                ) : (
-                  order.ps_shipto_customer_id || '—'
-                )}
+              <td style={{
+                fontWeight: 700,
+                color: order.customers?.is_multi_territory && !order.ps_shipto_customer_id ? '#dc2626' : '#333F48',
+                paddingRight: '6px',
+                whiteSpace: 'nowrap'
+              }}>Ship-To Acct ID</td>
+              <td colSpan={5} style={{ color: '#333F48', paddingRight: '24px', position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {canEdit && order.customers?.is_multi_territory ? (
+                    <>
+                      <select
+                        value={shipToCustomerId}
+                        onChange={(e) => handleShipToCustomerIdChange(e.target.value)}
+                        style={{
+                          fontSize: '13px',
+                          padding: '2px 4px',
+                          border: `1px solid ${order.customers?.is_multi_territory && !shipToCustomerId ? '#dc2626' : '#ccc'}`,
+                          borderRadius: '4px',
+                          backgroundColor: 'white',
+                          minWidth: '120px',
+                          color: !shipToCustomerId ? '#dc2626' : '#333F48'
+                        }}
+                      >
+                        <option value="">-- Select Ship-To --</option>
+                        {territoryShipToOptions.map((option) => (
+                          <option key={option.id} value={option.shipto_ps_customer_id}>
+                            {option.shipto_ps_customer_id} - {option.city}, {option.state}
+                          </option>
+                        ))}
+                      </select>
+                      <span style={{ fontSize: '12px', color: '#6b7a85', fontStyle: 'italic' }}>
+                        {shipToCustomerId
+                          ? territoryShipToOptions.find(o => o.shipto_ps_customer_id === shipToCustomerId)?.description || ''
+                          : ''}
+                      </span>
+                    </>
+                  ) : isEditing ? (
+                    <input
+                      type="text"
+                      value={shipToCustomerId}
+                      onChange={(e) => setShipToCustomerId(e.target.value)}
+                      style={{
+                        fontSize: '13px',
+                        padding: '2px 4px',
+                        border: '1px solid #ccc',
+                        borderRadius: '4px',
+                        minWidth: '120px'
+                      }}
+                      placeholder="Enter ship-to customer ID"
+                    />
+                  ) : (
+                    <>
+                      <span style={{
+                        color: order.customers?.is_multi_territory && !order.ps_shipto_customer_id ? '#dc2626' : '#333F48'
+                      }}>
+                        {order.ps_shipto_customer_id || '—'}
+                      </span>
+                      {order.ps_shipto_customer_id && order.customers?.is_multi_territory && (
+                        <span style={{ fontSize: '12px', color: '#6b7a85', fontStyle: 'italic' }}>
+                          {territoryShipToOptions.find(o => o.shipto_ps_customer_id === order.ps_shipto_customer_id)?.description || ''}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
               </td>
-              <td></td>
-              <td></td>
-              <td></td>
-              <td></td>
             </tr>
           </tbody>
         </table>
@@ -1550,6 +1604,7 @@ export function OrderHeader({
                       })
                       setCarrier(order.cust_carrier || '')
                       setShipVia(order.cust_ship_via || '')
+                      setShipToCustomerId(order.ps_shipto_customer_id || '')
                     }}
                     className="py-1.5 text-xs font-medium transition-colors"
                     style={{
