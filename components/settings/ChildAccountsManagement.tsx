@@ -21,10 +21,11 @@ interface ChildAccount {
 
 interface ChildAccountsManagementProps {
   customerId: string
+  customerName?: string
   isEditMode: boolean
 }
 
-export function ChildAccountsManagement({ customerId, isEditMode }: ChildAccountsManagementProps) {
+export function ChildAccountsManagement({ customerId, customerName, isEditMode }: ChildAccountsManagementProps) {
   const supabase = createClient()
   const [childAccounts, setChildAccounts] = useState<ChildAccount[]>([])
   const [loading, setLoading] = useState(true)
@@ -340,7 +341,7 @@ export function ChildAccountsManagement({ customerId, isEditMode }: ChildAccount
           <div className="rounded-lg shadow-lg flex flex-col" style={{ width: '500px', maxWidth: '90vw', backgroundColor: 'white', border: '1px solid #00A3E1' }} onClick={(e) => e.stopPropagation()}>
             <div className="border-b border-gray-300" style={{ padding: '20px 32px' }}>
               <h2 className="font-semibold text-[#333F48]" style={{ fontSize: '14px' }}>Add Child Account</h2>
-              <p className="text-xs text-[#6b7a85] mt-1">Customer: {customerId}</p>
+              <p className="text-xs text-[#6b7a85] mt-1">Customer: {customerName || customerId}</p>
             </div>
 
             <div className="space-y-4" style={{ padding: '32px' }}>
@@ -480,7 +481,7 @@ export function ChildAccountsManagement({ customerId, isEditMode }: ChildAccount
           <div className="rounded-lg shadow-lg flex flex-col" style={{ width: '500px', maxWidth: '90vw', backgroundColor: 'white', border: '1px solid #00A3E1' }} onClick={(e) => e.stopPropagation()}>
             <div className="border-b border-gray-300" style={{ padding: '20px 32px' }}>
               <h2 className="font-semibold text-[#333F48]" style={{ fontSize: '14px' }}>Edit Child Account</h2>
-              <p className="text-xs text-[#6b7a85] mt-1">Customer: {customerId}</p>
+              <p className="text-xs text-[#6b7a85] mt-1">Customer: {customerName || customerId}</p>
             </div>
 
             <div className="space-y-4" style={{ padding: '32px' }}>

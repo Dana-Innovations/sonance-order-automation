@@ -20,10 +20,11 @@ interface TerritoryShipTo {
 
 interface TerritoryShipToManagementProps {
   customerId: string
+  customerName?: string
   isEditMode: boolean
 }
 
-export function TerritoryShipToManagement({ customerId, isEditMode }: TerritoryShipToManagementProps) {
+export function TerritoryShipToManagement({ customerId, customerName, isEditMode }: TerritoryShipToManagementProps) {
   const supabase = createClient()
   const [territoryShipTos, setTerritoryShipTos] = useState<TerritoryShipTo[]>([])
   const [loading, setLoading] = useState(true)
@@ -415,7 +416,7 @@ export function TerritoryShipToManagement({ customerId, isEditMode }: TerritoryS
           <div className="rounded-lg shadow-lg flex flex-col" style={{ width: '600px', maxWidth: '90vw', backgroundColor: 'white', border: '1px solid #00A3E1' }} onClick={(e) => e.stopPropagation()}>
             <div className="border-b border-gray-300" style={{ padding: '20px 32px' }}>
               <h2 className="font-semibold text-[#333F48]" style={{ fontSize: '14px' }}>Add Territory Ship-To Account</h2>
-              <p className="text-xs text-[#6b7a85] mt-1">Customer: {customerId}</p>
+              <p className="text-xs text-[#6b7a85] mt-1">Customer: {customerName || customerId}</p>
             </div>
 
             <div className="space-y-4" style={{ padding: '32px' }}>
@@ -570,7 +571,7 @@ export function TerritoryShipToManagement({ customerId, isEditMode }: TerritoryS
           <div className="rounded-lg shadow-lg flex flex-col" style={{ width: '600px', maxWidth: '90vw', backgroundColor: 'white', border: '1px solid #00A3E1' }} onClick={(e) => e.stopPropagation()}>
             <div className="border-b border-gray-300" style={{ padding: '20px 32px' }}>
               <h2 className="font-semibold text-[#333F48]" style={{ fontSize: '14px' }}>Edit Territory Ship-To Account</h2>
-              <p className="text-xs text-[#6b7a85] mt-1">Customer: {customerId}</p>
+              <p className="text-xs text-[#6b7a85] mt-1">Customer: {customerName || customerId}</p>
             </div>
 
             <div className="space-y-4" style={{ padding: '32px' }}>

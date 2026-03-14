@@ -710,6 +710,7 @@ export function CustomerForm({
         {isMultiAccount && mode === 'edit' && formData.ps_customer_id === 'MULTI' && customer && (
           <ChildAccountsManagement
             customerId={customer.customer_id}
+            customerName={formData.customer_name}
             isEditMode={mode === 'edit'}
           />
         )}
@@ -718,6 +719,7 @@ export function CustomerForm({
         {formData.is_multi_territory && mode === 'edit' && customer && (
           <TerritoryShipToManagement
             customerId={customer.ps_customer_id}
+            customerName={formData.customer_name}
             isEditMode={mode === 'edit'}
           />
         )}
