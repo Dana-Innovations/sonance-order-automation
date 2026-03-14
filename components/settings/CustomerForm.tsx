@@ -399,8 +399,8 @@ export function CustomerForm({
       {/* Customer Configuration Toggles */}
       <div className="pb-4 border-b border-gray-200">
         <div className="grid grid-cols-2" style={{ gap: '48px' }}>
-          {/* Multi-Account Toggle - Only show in edit mode */}
-          {mode === 'edit' && (
+          {/* Multi-Account Toggle */}
+          {(
             <div>
               <label className="flex items-center gap-2 cursor-pointer" style={{ marginBottom: '8px' }}>
                 <input
