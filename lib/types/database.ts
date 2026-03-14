@@ -282,6 +282,7 @@ export type Database = {
           customer_id: string
           customer_name: string
           is_active: boolean | null
+          is_multi_territory: boolean | null
           MultiAccount_Prompt: string | null
           order_header_prompt: string | null
           order_line_prompt: string | null
@@ -300,6 +301,7 @@ export type Database = {
           customer_id?: string
           customer_name: string
           is_active?: boolean | null
+          is_multi_territory?: boolean | null
           MultiAccount_Prompt?: string | null
           order_header_prompt?: string | null
           order_line_prompt?: string | null
@@ -318,6 +320,7 @@ export type Database = {
           customer_id?: string
           customer_name?: string
           is_active?: boolean | null
+          is_multi_territory?: boolean | null
           MultiAccount_Prompt?: string | null
           order_header_prompt?: string | null
           order_line_prompt?: string | null
@@ -569,6 +572,7 @@ export type Database = {
           id: string
           pdf_file_url: string | null
           ps_customer_id: string
+          ps_shipto_customer_id: string | null
           ps_order_number: string | null
           shipto_name: string | null
           Son_Carrier_ID: string | null
@@ -607,6 +611,7 @@ export type Database = {
           id?: string
           pdf_file_url?: string | null
           ps_customer_id: string
+          ps_shipto_customer_id?: string | null
           ps_order_number?: string | null
           shipto_name?: string | null
           Son_Carrier_ID?: string | null
@@ -645,6 +650,7 @@ export type Database = {
           id?: string
           pdf_file_url?: string | null
           ps_customer_id?: string
+          ps_shipto_customer_id?: string | null
           ps_order_number?: string | null
           shipto_name?: string | null
           Son_Carrier_ID?: string | null
@@ -823,6 +829,53 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      customer_territory_shipto: {
+        Row: {
+          id: string
+          parent_ps_customer_id: string
+          shipto_ps_customer_id: string
+          city: string
+          state: string
+          country_code: string | null
+          description: string | null
+          is_active: boolean | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          parent_ps_customer_id: string
+          shipto_ps_customer_id: string
+          city: string
+          state: string
+          country_code?: string | null
+          description?: string | null
+          is_active?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          parent_ps_customer_id?: string
+          shipto_ps_customer_id?: string
+          city?: string
+          state?: string
+          country_code?: string | null
+          description?: string | null
+          is_active?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_territory_shipto_parent_ps_customer_id_fkey"
+            columns: ["parent_ps_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["ps_customer_id"]
+          }
+        ]
       }
       api_keys: {
         Row: {

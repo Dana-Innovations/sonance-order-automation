@@ -48,8 +48,46 @@ export default async function OrderDetailPage({
     .eq('cust_order_number', order.cust_order_number)
     .order('cust_line_number')
 
+  // Auto-populate ship-to customer ID for multi-territory customers
+  let updatedOrder = order
+  if (customer?.is_multi_territory && !order.ps_shipto_customer_id && order.cust_shipto_city && order.cust_shipto_state) {
+    const { data: territoryMatch } = await supabase
+      .from('customer_territory_shipto')
+      .select('shipto_ps_customer_id')
+      .eq('parent_ps_customer_id', order.ps_customer_id)
+      .eq('is_active', true)
+      .ilike('city', order.cust_shipto_city)
+      .ilike('state', order.cust_shipto_state)
+      .eq('country_code', order.cust_shipto_country || 'USA')
+      .maybeSingle()
+
+    if (territoryMatch?.shipto_ps_customer_id) {
+      // Update the order with the matched ship-to customer ID
+      const { data: orderUpdateResult } = await supabase
+        .from('orders')
+        .update({ ps_shipto_customer_id: territoryMatch.shipto_ps_customer_id })
+        .eq('id', orderId)
+        .select()
+        .single()
+
+      if (orderUpdateResult) {
+        updatedOrder = orderUpdateResult
+
+        // Log the auto-population
+        await supabase.from('audit_log').insert({
+          order_id: orderId,
+          user_id: user.id,
+          action_type: 'ship_to_customer_id_auto_populated',
+          field_name: 'ps_shipto_customer_id',
+          new_value: territoryMatch.shipto_ps_customer_id,
+          reason: `Auto-populated based on ship-to address: ${order.cust_shipto_city}, ${order.cust_shipto_state}`,
+        })
+      }
+    }
+  }
+
   const enrichedOrder = {
-    ...order,
+    ...updatedOrder,
     customers: customer!,
     order_statuses: status!,
     order_lines: orderLines || [],

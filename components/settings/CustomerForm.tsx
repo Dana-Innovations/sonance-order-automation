@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Tables } from '@/lib/types/database'
 import { createPortal } from 'react-dom'
 import { ChildAccountsManagement } from './ChildAccountsManagement'
+import { TerritoryShipToManagement } from './TerritoryShipToManagement'
 
 type Customer = Tables<'customers'>
 type CSR = {
@@ -37,6 +38,7 @@ export function CustomerForm({
     sender_email: customer?.sender_email || '',
     csr_id: customer?.csr_id || '',
     is_active: customer?.is_active ?? true,
+    is_multi_territory: customer?.is_multi_territory ?? false,
     order_line_prompt: customer?.order_line_prompt || '',
     order_header_prompt: customer?.order_header_prompt || '',
     MultiAccount_Prompt: customer?.MultiAccount_Prompt || '',
@@ -282,6 +284,7 @@ export function CustomerForm({
             sender_email: formData.sender_email,
             csr_id: formData.csr_id,
             is_active: formData.is_active,
+            is_multi_territory: formData.is_multi_territory,
             order_line_prompt: formData.order_line_prompt || null,
             order_header_prompt: formData.order_header_prompt || null,
             MultiAccount_Prompt: formData.MultiAccount_Prompt || null,
@@ -304,6 +307,7 @@ export function CustomerForm({
             sender_email: formData.sender_email,
             csr_id: formData.csr_id,
             is_active: formData.is_active,
+            is_multi_territory: formData.is_multi_territory,
             order_line_prompt: formData.order_line_prompt || null,
             order_header_prompt: formData.order_header_prompt || null,
             MultiAccount_Prompt: formData.MultiAccount_Prompt || null,
@@ -428,7 +432,40 @@ export function CustomerForm({
             </div>
           )}
 
-          {/* Customer Status Toggle */}
+          {/* Multi-Territory Toggle */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer" style={{ marginBottom: '8px' }}>
+              <input
+                type="checkbox"
+                checked={formData.is_multi_territory}
+                onChange={(e) => setFormData({ ...formData, is_multi_territory: e.target.checked })}
+                className="rounded cursor-pointer"
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  border: '2px solid #d1d5db',
+                  borderRadius: '4px',
+                  backgroundColor: formData.is_multi_territory ? '#00A3E1' : 'white',
+                  backgroundImage: formData.is_multi_territory ? "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E\")" : 'none',
+                  backgroundSize: '100% 100%',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat'
+                }}
+              />
+              <span className="text-sm text-[#333F48] font-medium">Multi-Territory Account</span>
+            </label>
+            <p className="text-xs text-[#6b7a85] ml-6">
+              {formData.is_multi_territory
+                ? 'Territory-based ship-to customer IDs. Configure below.'
+                : 'Enable for customers with different ship-to IDs by territory.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Customer Status Toggle - Move to second row */}
+        <div className="grid grid-cols-2 mt-4" style={{ gap: '48px' }}>
           <div>
             <label className="flex items-center gap-2 cursor-pointer" style={{ marginBottom: '8px' }}>
               <input
@@ -454,6 +491,7 @@ export function CustomerForm({
             </label>
             <p className="text-xs text-[#6b7a85] ml-6">Checked = Active, Unchecked = Inactive</p>
           </div>
+          <div></div>
         </div>
       </div>
 
@@ -672,6 +710,14 @@ export function CustomerForm({
         {isMultiAccount && mode === 'edit' && formData.ps_customer_id === 'MULTI' && customer && (
           <ChildAccountsManagement
             customerId={customer.customer_id}
+            isEditMode={mode === 'edit'}
+          />
+        )}
+
+        {/* Territory Ship-To Management - Show for multi-territory customers */}
+        {formData.is_multi_territory && mode === 'edit' && customer && (
+          <TerritoryShipToManagement
+            customerId={customer.ps_customer_id}
             isEditMode={mode === 'edit'}
           />
         )}

@@ -121,6 +121,15 @@ export function OrderHeader({
   const [hoveredDefault, setHoveredDefault] = useState<string | null>(null)
   const [showErrorTooltip, setShowErrorTooltip] = useState(false)
   const [errorTooltipPosition, setErrorTooltipPosition] = useState<{ x: number; y: number } | null>(null)
+  const [shipToCustomerId, setShipToCustomerId] = useState('')
+  const [territoryShipToOptions, setTerritoryShipToOptions] = useState<{
+    id: string
+    shipto_ps_customer_id: string
+    city: string
+    state: string
+    country_code: string | null
+    description: string | null
+  }[]>([])
 
   const supabase = createClient()
   const router = useRouter()
@@ -236,6 +245,36 @@ export function OrderHeader({
     fetchShipViaOptions()
   }, [carrier])
 
+  // Fetch territory ship-to options for multi-territory customers
+  useEffect(() => {
+    const fetchTerritoryShipToOptions = async () => {
+      if (!order.customers?.is_multi_territory || !order.customers?.ps_customer_id) {
+        setTerritoryShipToOptions([])
+        return
+      }
+
+      const { data } = await supabase
+        .from('customer_territory_shipto')
+        .select('id, shipto_ps_customer_id, city, state, country_code, description')
+        .eq('parent_ps_customer_id', order.customers.ps_customer_id)
+        .eq('is_active', true)
+        .order('state, city')
+
+      if (data) {
+        setTerritoryShipToOptions(data)
+      } else {
+        setTerritoryShipToOptions([])
+      }
+    }
+
+    fetchTerritoryShipToOptions()
+  }, [order.customers?.ps_customer_id, order.customers?.is_multi_territory])
+
+  // Initialize editing state
+  useEffect(() => {
+    setShipToCustomerId(order.ps_shipto_customer_id || '')
+  }, [order.ps_shipto_customer_id])
+
   // Apply default carrier
   const handleApplyDefaultCarrier = async () => {
     if (customerDefaults.default_carrier) {
@@ -307,6 +346,7 @@ export function OrderHeader({
     setCarrier(order.cust_carrier || '')
     setShipVia(order.cust_ship_via || '')
     setShipToName(order.shipto_name || '')
+    setShipToCustomerId(order.ps_shipto_customer_id || '')
     setIsEditing(true)
   }
 
@@ -328,6 +368,7 @@ export function OrderHeader({
       cust_shipto_postal_code: address.postal.trim() || null,
       cust_carrier: carrier.trim() || null,
       cust_ship_via: shipVia.trim() || null,
+      ps_shipto_customer_id: shipToCustomerId.trim() || null,
     }
 
     const { error } = await supabase
@@ -540,6 +581,54 @@ export function OrderHeader({
               <td style={{ color: '#333F48' }}>
                 {assignedCSR ? `${assignedCSR.first_name} ${assignedCSR.last_name}` : '—'}
               </td>
+            </tr>
+            <tr>
+              <td></td>
+              <td></td>
+              <td style={{ fontWeight: 700, color: '#333F48', paddingRight: '6px', whiteSpace: 'nowrap' }}>Ship-To Acct ID</td>
+              <td style={{ color: '#333F48', paddingRight: '24px', position: 'relative' }}>
+                {isEditing && order.customers?.is_multi_territory ? (
+                  <select
+                    value={shipToCustomerId}
+                    onChange={(e) => setShipToCustomerId(e.target.value)}
+                    style={{
+                      fontSize: '14px',
+                      padding: '2px 4px',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px',
+                      backgroundColor: 'white',
+                      minWidth: '120px'
+                    }}
+                  >
+                    <option value="">-- Select Ship-To --</option>
+                    {territoryShipToOptions.map((option) => (
+                      <option key={option.id} value={option.shipto_ps_customer_id}>
+                        {option.shipto_ps_customer_id} - {option.city}, {option.state}
+                      </option>
+                    ))}
+                  </select>
+                ) : isEditing ? (
+                  <input
+                    type="text"
+                    value={shipToCustomerId}
+                    onChange={(e) => setShipToCustomerId(e.target.value)}
+                    style={{
+                      fontSize: '14px',
+                      padding: '2px 4px',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px',
+                      minWidth: '120px'
+                    }}
+                    placeholder="Enter ship-to customer ID"
+                  />
+                ) : (
+                  order.ps_shipto_customer_id || '—'
+                )}
+              </td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
             </tr>
           </tbody>
         </table>
