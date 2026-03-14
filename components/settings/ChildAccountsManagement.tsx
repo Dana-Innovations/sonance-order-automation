@@ -10,7 +10,9 @@ interface ChildAccount {
   parent_customer_id: string
   child_ps_account_id: string
   routing_description: string
-  ai_mapping_instructions: string | null
+  city: string | null
+  state: string | null
+  zip: string | null
   display_order: number
   is_active: boolean
   created_at: string
@@ -35,7 +37,10 @@ export function ChildAccountsManagement({ customerId, isEditMode }: ChildAccount
   // Form state
   const [formData, setFormData] = useState({
     child_ps_account_id: '',
-    routing_description: ''
+    routing_description: '',
+    city: '',
+    state: '',
+    zip: ''
   })
   const [formError, setFormError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -72,7 +77,7 @@ export function ChildAccountsManagement({ customerId, isEditMode }: ChildAccount
   }, [customerId, isEditMode])
 
   const handleAdd = () => {
-    setFormData({ child_ps_account_id: '', routing_description: '' })
+    setFormData({ child_ps_account_id: '', routing_description: '', city: '', state: '', zip: '' })
     setFormError(null)
     setShowAddModal(true)
   }
@@ -81,7 +86,10 @@ export function ChildAccountsManagement({ customerId, isEditMode }: ChildAccount
     setSelectedAccount(account)
     setFormData({
       child_ps_account_id: account.child_ps_account_id,
-      routing_description: account.routing_description
+      routing_description: account.routing_description,
+      city: account.city || '',
+      state: account.state || '',
+      zip: account.zip || ''
     })
     setFormError(null)
     setShowEditModal(true)
@@ -100,15 +108,6 @@ export function ChildAccountsManagement({ customerId, isEditMode }: ChildAccount
       setFormError('Child Account ID is required')
       return
     }
-    if (!formData.routing_description.trim()) {
-      setFormError('AI Mapping is required')
-      return
-    }
-    if (formData.routing_description.length < 20) {
-      setFormError('AI Mapping must be at least 20 characters')
-      return
-    }
-
     setIsSaving(true)
     try {
       const response = await fetch(`/api/customers/${customerId}/child-accounts`, {
@@ -137,25 +136,12 @@ export function ChildAccountsManagement({ customerId, isEditMode }: ChildAccount
 
     setFormError(null)
 
-    // Validation
-    if (!formData.routing_description.trim()) {
-      setFormError('AI Mapping is required')
-      return
-    }
-    if (formData.routing_description.length < 20) {
-      setFormError('AI Mapping must be at least 20 characters')
-      return
-    }
-
     setIsSaving(true)
     try {
       const response = await fetch(`/api/customers/${customerId}/child-accounts/${selectedAccount.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          child_ps_account_id: formData.child_ps_account_id,
-          routing_description: formData.routing_description
-        })
+        body: JSON.stringify(formData)
       })
 
       const data = await response.json()
@@ -272,8 +258,13 @@ export function ChildAccountsManagement({ customerId, isEditMode }: ChildAccount
                     <div className="text-sm font-semibold text-[#333F48] mb-1">
                       PS Account ID: {account.child_ps_account_id}
                     </div>
+                    {account.routing_description && (
+                      <div className="text-xs text-[#6b7a85] mb-1">
+                        {account.routing_description}
+                      </div>
+                    )}
                     <div className="text-xs text-[#6b7a85]">
-                      <span className="font-medium">Used When:</span> {account.routing_description}
+                      {[account.city, account.state, account.zip].filter(Boolean).join(', ') || '—'}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
@@ -375,22 +366,54 @@ export function ChildAccountsManagement({ customerId, isEditMode }: ChildAccount
 
               <div style={{ marginTop: '24px' }}>
                 <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">
-                  AI Mapping * (min 20 chars)
+                  Description
                 </label>
-                <textarea
+                <input
+                  type="text"
                   value={formData.routing_description}
                   onChange={(e) => setFormData({ ...formData, routing_description: e.target.value })}
                   className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]"
-                  style={{ fontSize: '13px', minHeight: '80px' }}
-                  placeholder='Describe when to use this account, e.g., "Arizona orders (ship-to state AZ)"'
+                  style={{ fontSize: '13px' }}
+                  placeholder='e.g., "West Coast Warehouse"'
                 />
-                <p className="text-xs text-[#999] mt-1">{formData.routing_description.length} / 20 characters</p>
               </div>
 
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded">
-                <p className="text-xs text-blue-800">
-                  💡 The AI Mapping is used to tell the LLM when to use this account ID, example, Ship To State = AZ or TX
-                </p>
+              <div className="grid grid-cols-3 gap-3" style={{ marginTop: '24px' }}>
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">City</label>
+                  <input
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]"
+                    style={{ fontSize: '13px' }}
+                    placeholder="City"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">State</label>
+                  <input
+                    type="text"
+                    value={formData.state}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                    className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]"
+                    style={{ fontSize: '13px' }}
+                    placeholder="State"
+                    maxLength={10}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">Zip</label>
+                  <input
+                    type="text"
+                    value={formData.zip}
+                    onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                    className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]"
+                    style={{ fontSize: '13px' }}
+                    placeholder="Zip"
+                    maxLength={20}
+                  />
+                </div>
               </div>
             </div>
 
@@ -482,21 +505,54 @@ export function ChildAccountsManagement({ customerId, isEditMode }: ChildAccount
 
               <div>
                 <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">
-                  AI Mapping * (min 20 chars)
+                  Description
                 </label>
-                <textarea
+                <input
+                  type="text"
                   value={formData.routing_description}
                   onChange={(e) => setFormData({ ...formData, routing_description: e.target.value })}
                   className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]"
-                  style={{ fontSize: '13px', minHeight: '80px' }}
+                  style={{ fontSize: '13px' }}
+                  placeholder='e.g., "West Coast Warehouse"'
                 />
-                <p className="text-xs text-[#999] mt-1">{formData.routing_description.length} / 20 characters</p>
               </div>
 
-              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
-                <p className="text-xs text-yellow-800">
-                  ⚠️ Changes to routing descriptions require regenerating the Multi-Account Routing Prompt.
-                </p>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">City</label>
+                  <input
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]"
+                    style={{ fontSize: '13px' }}
+                    placeholder="City"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">State</label>
+                  <input
+                    type="text"
+                    value={formData.state}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                    className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]"
+                    style={{ fontSize: '13px' }}
+                    placeholder="State"
+                    maxLength={10}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-widest text-[#6b7a85] mb-2">Zip</label>
+                  <input
+                    type="text"
+                    value={formData.zip}
+                    onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                    className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-[#333F48] focus:border-[#00A3E1] focus:outline-none focus:ring-1 focus:ring-[#00A3E1]"
+                    style={{ fontSize: '13px' }}
+                    placeholder="Zip"
+                    maxLength={20}
+                  />
+                </div>
               </div>
             </div>
 

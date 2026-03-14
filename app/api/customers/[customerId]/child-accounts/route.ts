@@ -52,19 +52,12 @@ export async function POST(
 
     const { customerId } = await params
     const body = await request.json()
-    const { child_ps_account_id, routing_description } = body
+    const { child_ps_account_id, routing_description, city, state, zip } = body
 
     // Validation
-    if (!child_ps_account_id || !routing_description) {
+    if (!child_ps_account_id) {
       return NextResponse.json(
-        { error: 'child_ps_account_id and routing_description are required' },
-        { status: 400 }
-      )
-    }
-
-    if (routing_description.length < 20) {
-      return NextResponse.json(
-        { error: 'routing_description must be at least 20 characters' },
+        { error: 'child_ps_account_id is required' },
         { status: 400 }
       )
     }
@@ -133,7 +126,10 @@ export async function POST(
       .insert({
         parent_customer_id: customerId,
         child_ps_account_id,
-        routing_description,
+        routing_description: routing_description || '',
+        city: city || null,
+        state: state || null,
+        zip: zip || null,
         display_order: nextOrder,
         is_active: true
       })

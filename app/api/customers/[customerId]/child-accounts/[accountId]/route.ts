@@ -17,15 +17,7 @@ export async function PATCH(
 
     const { customerId, accountId } = await params
     const body = await request.json()
-    const { child_ps_account_id, routing_description } = body
-
-    // Validation
-    if (routing_description && routing_description.length < 20) {
-      return NextResponse.json(
-        { error: 'routing_description must be at least 20 characters' },
-        { status: 400 }
-      )
-    }
+    const { child_ps_account_id, routing_description, city, state, zip } = body
 
     // Verify ownership (customerId is now the UUID)
     const { data: existingAccount, error: fetchError } = await supabase
@@ -73,7 +65,10 @@ export async function PATCH(
     // Update
     const updateData: any = {}
     if (child_ps_account_id) updateData.child_ps_account_id = child_ps_account_id
-    if (routing_description) updateData.routing_description = routing_description
+    if (routing_description !== undefined) updateData.routing_description = routing_description
+    if (city !== undefined) updateData.city = city || null
+    if (state !== undefined) updateData.state = state || null
+    if (zip !== undefined) updateData.zip = zip || null
 
     const { data: updatedAccount, error: updateError } = await supabase
       .from('customer_child_accounts')
