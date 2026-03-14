@@ -1,18 +1,26 @@
-export const dynamic = 'force-dynamic'
+'use client'
 
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 import { TrackingDashboard } from '@/components/reports/TrackingDashboard'
 
-export default async function TrackingPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+export default function TrackingPage() {
+  const supabase = createClient()
+  const router = useRouter()
+  const [userEmail, setUserEmail] = useState<string | null>(null)
 
-  if (!user || !user.email) {
-    redirect('/login')
-  }
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user?.email) {
+        router.push('/login')
+      } else {
+        setUserEmail(user.email)
+      }
+    })
+  }, [])
+
+  if (!userEmail) return null
 
   return (
     <div className="space-y-6">
@@ -22,8 +30,7 @@ export default async function TrackingPage() {
           Monitor order status and identify bottlenecks
         </p>
       </div>
-      <TrackingDashboard userEmail={user.email} />
+      <TrackingDashboard userEmail={userEmail} />
     </div>
   )
 }
-
