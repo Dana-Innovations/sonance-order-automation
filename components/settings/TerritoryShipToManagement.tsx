@@ -13,9 +13,9 @@ interface TerritoryShipTo {
   state: string
   country_code: string | null
   description: string | null
-  is_active: boolean
-  created_at: string
-  updated_at: string
+  is_active: boolean | null
+  created_at: string | null
+  updated_at: string | null
 }
 
 interface TerritoryShipToManagementProps {
