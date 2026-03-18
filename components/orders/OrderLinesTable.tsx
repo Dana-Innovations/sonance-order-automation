@@ -1134,7 +1134,7 @@ export function OrderLinesTable({
                 <td style={{ fontSize: '0.75rem', padding: '10px 2px', verticalAlign: 'top', textAlign: 'center', width: '20px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                     {!isLineCancelled && renderPriceWarningIcon(line)}
-                    {!isLineCancelled && line.cust_unit_price != null && line.sonance_unit_price != null &&
+                    {!isLineCancelled && !isImportSuccessful && !isUploadInProcess && line.cust_unit_price != null && line.sonance_unit_price != null &&
                      line.cust_unit_price !== line.sonance_unit_price && (
                       <button
                         onClick={() => handleApplyCustomerPrice(line)}
