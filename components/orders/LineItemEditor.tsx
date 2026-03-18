@@ -153,8 +153,11 @@ export function LineItemEditor({
     }
 
     // Build update object - ONLY update sonance fields, never customer fields (cust_line_desc, cust_uom, cust_quantity, cust_product_sku)
+    // If operator changed the quantity, mark it as manually edited to prevent auto-conversion overwriting it
+    const qtyChanged = (line.sonance_quantity ?? line.cust_quantity)?.toString() !== formData.quantity
     const updateData: Record<string, any> = {
       sonance_quantity: quantity,
+      ...(qtyChanged ? { qty_manually_edited: true } : {}),
       sonance_prod_sku: formData.sonanceItem,
       sonance_unit_price: unitPrice,
       validated_sku: formData.sonanceItem,
