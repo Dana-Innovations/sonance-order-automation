@@ -65,7 +65,8 @@ export function OrderActions({
   // Post Order available for Under Review (02) or Reviewed with Changes (03)
   const canPostOrder = order.status_code === '02' || order.status_code === '03'
   const canEnterERP = false // ERP number entry removed
-  const canCancel = order.status_code !== '06' && !order.ps_order_number && order.status_code !== '05' && order.status_code !== '04'
+  // Cancel available for all statuses EXCEPT Upload in Process (04), Upload Successful (05), and already Cancelled (06)
+  const canCancel = order.status_code !== '04' && order.status_code !== '05' && order.status_code !== '06'
 
   // Add Line available for NEW (01), REVIEWED NO CHANGES (02), or REVIEWED WITH CHANGES (03)
   // and order has not been posted to PeopleSoft yet
