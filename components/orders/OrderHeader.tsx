@@ -106,6 +106,9 @@ export function OrderHeader({
   const [shipToName, setShipToName] = useState('')
   const [distinctCarriers, setDistinctCarriers] = useState<{ carrier_id: string; carrier_descr: string }[]>([])
   const [shipViaOptions, setShipViaOptions] = useState<{ ship_via_code: string; ship_via_desc: string }[]>([])
+  const [allCarrierShipVias, setAllCarrierShipVias] = useState<{ carrier_id: string; ship_via_code: string }[]>([])
+  const [isCarrierInvalid, setIsCarrierInvalid] = useState(false)
+  const [isShipViaInvalid, setIsShipViaInvalid] = useState(false)
   const [notesExpanded, setNotesExpanded] = useState(false)
   const [headerExpanded, setHeaderExpanded] = useState(true)
   const [assignedCSR, setAssignedCSR] = useState<{ first_name: string; last_name: string } | null>(null)
@@ -143,7 +146,9 @@ export function OrderHeader({
   if (!order.cust_shipto_state) missingRequiredFields.push('State')
   if (!order.cust_shipto_postal_code) missingRequiredFields.push('Postal Code')
   if (!order.cust_carrier) missingRequiredFields.push('Carrier')
+  else if (isCarrierInvalid) missingRequiredFields.push('Carrier (invalid)')
   if (!order.cust_ship_via) missingRequiredFields.push('Ship Via')
+  else if (isShipViaInvalid) missingRequiredFields.push('Ship Via (invalid for carrier)')
   if (order.customers?.is_multi_territory && !order.ps_shipto_customer_id) missingRequiredFields.push('Ship-To Acct ID')
 
   const hasMissingFields = missingRequiredFields.length > 0
@@ -153,7 +158,7 @@ export function OrderHeader({
     const fetchCarriers = async () => {
       const { data } = await supabase
         .from('carriers')
-        .select('carrier_id, carrier_descr')
+        .select('carrier_id, carrier_descr, ship_via_code')
         .order('carrier_id')
 
       if (data) {
@@ -165,10 +170,32 @@ export function OrderHeader({
           return acc
         }, [] as { carrier_id: string; carrier_descr: string }[])
         setDistinctCarriers(uniqueCarriers)
+        // Store all carrier+ship_via combinations for validation
+        setAllCarrierShipVias(data.map(d => ({ carrier_id: d.carrier_id, ship_via_code: d.ship_via_code })))
       }
     }
     fetchCarriers()
   }, [])
+
+  // Validate order carrier/ship_via against carriers table
+  useEffect(() => {
+    if (allCarrierShipVias.length === 0) return
+    if (order.cust_carrier) {
+      const carrierExists = distinctCarriers.some(c => c.carrier_id === order.cust_carrier)
+      setIsCarrierInvalid(!carrierExists)
+      if (order.cust_ship_via) {
+        const shipViaValid = allCarrierShipVias.some(
+          cs => cs.carrier_id === order.cust_carrier && cs.ship_via_code === order.cust_ship_via
+        )
+        setIsShipViaInvalid(!shipViaValid)
+      } else {
+        setIsShipViaInvalid(false)
+      }
+    } else {
+      setIsCarrierInvalid(false)
+      setIsShipViaInvalid(false)
+    }
+  }, [order.cust_carrier, order.cust_ship_via, allCarrierShipVias, distinctCarriers])
 
   // Fetch assigned CSR details when component mounts
   useEffect(() => {
@@ -1309,14 +1336,14 @@ export function OrderHeader({
                       textAlign: 'right',
                       paddingRight: '0.5rem',
                       whiteSpace: 'nowrap',
-                      color: !order.cust_carrier ? 'red' : '#333F48'
+                      color: !order.cust_carrier || isCarrierInvalid ? 'red' : '#333F48'
                     }}>
                       Carrier
-                      {isEditing && <span style={{ color: !order.cust_carrier ? 'red' : '#00A3E1', marginLeft: '2px' }}>*</span>}
+                      {isEditing && <span style={{ color: !order.cust_carrier || isCarrierInvalid ? 'red' : '#00A3E1', marginLeft: '2px' }}>*</span>}
                     </td>
                     <td style={{
                       paddingRight: isEditing ? '1.5rem' : 0,
-                      color: !order.cust_carrier ? 'red' : '#333F48',
+                      color: !order.cust_carrier || isCarrierInvalid ? 'red' : '#333F48',
                       position: 'relative'
                     }}>
                       {order.cust_carrier || '—'}
@@ -1421,14 +1448,14 @@ export function OrderHeader({
                       textAlign: 'right',
                       paddingRight: '0.5rem',
                       whiteSpace: 'nowrap',
-                      color: !order.cust_ship_via ? 'red' : '#333F48'
+                      color: !order.cust_ship_via || isShipViaInvalid ? 'red' : '#333F48'
                     }}>
                       Ship Via
-                      {isEditing && <span style={{ color: !order.cust_ship_via ? 'red' : '#00A3E1', marginLeft: '2px' }}>*</span>}
+                      {isEditing && <span style={{ color: !order.cust_ship_via || isShipViaInvalid ? 'red' : '#00A3E1', marginLeft: '2px' }}>*</span>}
                     </td>
                     <td style={{
                       paddingRight: isEditing ? '1.5rem' : 0,
-                      color: !order.cust_ship_via ? 'red' : '#333F48',
+                      color: !order.cust_ship_via || isShipViaInvalid ? 'red' : '#333F48',
                       position: 'relative'
                     }}>
                       {order.cust_ship_via || '—'}

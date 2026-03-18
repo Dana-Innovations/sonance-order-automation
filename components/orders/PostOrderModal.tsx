@@ -29,6 +29,12 @@ interface ProductValidationResult {
   hasMatchingUom: boolean
 }
 
+interface CarrierValidationResult {
+  isValid: boolean
+  carrierExists: boolean
+  shipViaValid: boolean
+}
+
 interface PriceMismatch {
   lineNumber: number
   productSku: string
@@ -37,7 +43,7 @@ interface PriceMismatch {
   variance: number
 }
 
-function validateOrderForPost(order: Order, productValidation?: ProductValidationResult[]): ValidationResult {
+function validateOrderForPost(order: Order, productValidation?: ProductValidationResult[], carrierValidation?: CarrierValidationResult): ValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
 
@@ -78,6 +84,15 @@ function validateOrderForPost(order: Order, productValidation?: ProductValidatio
 
   if (!order.cust_ship_via) {
     errors.push('Ship Via is required')
+  }
+
+  // Validate carrier/ship_via combination against carriers table
+  if (carrierValidation && order.cust_carrier && order.cust_ship_via) {
+    if (!carrierValidation.carrierExists) {
+      errors.push(`Carrier/Ship Via combination is invalid: ${order.cust_carrier}/${order.cust_ship_via} - carrier not found in carriers table`)
+    } else if (!carrierValidation.shipViaValid) {
+      errors.push(`Carrier/Ship Via combination is invalid: ${order.cust_carrier}/${order.cust_ship_via} - ship via not valid for this carrier`)
+    }
   }
 
   // Order lines validation
@@ -150,6 +165,36 @@ export function PostOrderModal({
   const [mappingsSaved, setMappingsSaved] = useState(0)
   const supabase = createClient()
   const router = useRouter()
+
+  // Validate carrier/ship_via against carriers table
+  const { data: carrierValidation, isLoading: isValidatingCarrier } = useQuery({
+    queryKey: ['order-carrier-validation', order.id, order.cust_carrier, order.cust_ship_via],
+    queryFn: async (): Promise<CarrierValidationResult> => {
+      if (!order.cust_carrier || !order.cust_ship_via) {
+        return { isValid: false, carrierExists: false, shipViaValid: false }
+      }
+
+      // Check if carrier exists
+      const { data: carrierData } = await supabase
+        .from('carriers')
+        .select('carrier_id, ship_via_code')
+        .eq('carrier_id', order.cust_carrier)
+
+      if (!carrierData || carrierData.length === 0) {
+        return { isValid: false, carrierExists: false, shipViaValid: false }
+      }
+
+      // Check if ship_via is valid for this carrier
+      const shipViaValid = carrierData.some(c => c.ship_via_code === order.cust_ship_via)
+
+      return {
+        isValid: shipViaValid,
+        carrierExists: true,
+        shipViaValid,
+      }
+    },
+    enabled: !!order.cust_carrier && !!order.cust_ship_via,
+  })
 
   // Validate products against customer_pricing_sync
   // Include line SKUs and UOMs in cache key so it recalculates when lines change
@@ -261,7 +306,7 @@ export function PostOrderModal({
     enabled: !!order.ps_customer_id,
   })
 
-  const validation = validateOrderForPost(order, productValidation)
+  const validation = validateOrderForPost(order, productValidation, carrierValidation)
 
   const handlePostOrder = async () => {
     if (!validation.valid || !confirmed) return
@@ -454,6 +499,11 @@ export function PostOrderModal({
                     label="Ship Via selected"
                   />
                   <ValidationItem
+                    passed={!isValidatingCarrier && (carrierValidation?.isValid ?? false)}
+                    label="Carrier/Ship Via valid in carriers table"
+                    isLoading={isValidatingCarrier}
+                  />
+                  <ValidationItem
                     passed={(order.order_lines?.filter(l => l.line_status !== 'cancelled').length || 0) > 0}
                     label="At least one active line item"
                   />
@@ -623,28 +673,28 @@ export function PostOrderModal({
           {step === 'validate' && (
             <button
               onClick={handlePostOrder}
-              disabled={!validation.valid || !confirmed || isProcessing || isValidating}
+              disabled={!validation.valid || !confirmed || isProcessing || isValidating || isValidatingCarrier}
               className="font-medium transition-colors"
               style={{
                 border: '1px solid #00A3E1',
                 borderRadius: '20px',
-                backgroundColor: !validation.valid || !confirmed || isProcessing || isValidating ? '#ccc' : '#00A3E1',
+                backgroundColor: !validation.valid || !confirmed || isProcessing || isValidating || isValidatingCarrier ? '#ccc' : '#00A3E1',
                 color: 'white',
                 paddingLeft: '20px',
                 paddingRight: '20px',
                 paddingTop: '6px',
                 paddingBottom: '6px',
                 fontSize: '9px',
-                cursor: !validation.valid || !confirmed || isProcessing || isValidating ? 'not-allowed' : 'pointer',
-                opacity: !validation.valid || !confirmed || isProcessing || isValidating ? 0.5 : 1,
+                cursor: !validation.valid || !confirmed || isProcessing || isValidating || isValidatingCarrier ? 'not-allowed' : 'pointer',
+                opacity: !validation.valid || !confirmed || isProcessing || isValidating || isValidatingCarrier ? 0.5 : 1,
               }}
               onMouseEnter={(e) => {
-                if (!(!validation.valid || !confirmed || isProcessing || isValidating)) {
+                if (!(!validation.valid || !confirmed || isProcessing || isValidating || isValidatingCarrier)) {
                   e.currentTarget.style.backgroundColor = '#008bc4'
                 }
               }}
               onMouseLeave={(e) => {
-                if (!(!validation.valid || !confirmed || isProcessing || isValidating)) {
+                if (!(!validation.valid || !confirmed || isProcessing || isValidating || isValidatingCarrier)) {
                   e.currentTarget.style.backgroundColor = '#00A3E1'
                 }
               }}
