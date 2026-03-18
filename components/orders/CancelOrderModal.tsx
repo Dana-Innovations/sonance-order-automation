@@ -22,12 +22,10 @@ export function CancelOrderModal({
   const supabase = createClient()
   const router = useRouter()
 
-  // Check if order can be cancelled
-  const canCancel = !order.ps_order_number && order.status_code !== '05' && order.status_code !== '04'
-  const cancelBlockedReason = order.ps_order_number
-    ? 'This order has been imported to PeopleSoft and cannot be cancelled.'
-    : order.status_code === '05'
-    ? 'Orders with status "Import Successful" cannot be cancelled.'
+  // Check if order can be cancelled - only block for Upload in Process (04) or Upload Successful (05)
+  const canCancel = order.status_code !== '04' && order.status_code !== '05'
+  const cancelBlockedReason = order.status_code === '05'
+    ? 'Orders with status "Upload Successful" cannot be cancelled.'
     : order.status_code === '04'
     ? 'Orders with status "Upload in Process" cannot be cancelled.'
     : ''
