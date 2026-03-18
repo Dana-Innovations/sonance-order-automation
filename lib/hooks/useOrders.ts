@@ -90,6 +90,26 @@ export function useOrders({
 
       if (accountIdsToQuery !== null) {
         query = query.in('ps_customer_id', accountIdsToQuery)
+      } else if (customerIdFilter) {
+        // In showAllOrders mode, still filter by selected customer's ps_customer_id
+        // Also include child accounts for multi-territory customers
+        const { data: selectedCustomer } = await supabase
+          .from('customers')
+          .select('customer_id, ps_customer_id')
+          .eq('ps_customer_id', customerIdFilter)
+          .maybeSingle()
+
+        if (selectedCustomer) {
+          const { data: childAccounts } = await supabase
+            .from('customer_child_accounts')
+            .select('child_ps_account_id')
+            .eq('parent_customer_id', selectedCustomer.customer_id)
+
+          const allIds = [customerIdFilter, ...(childAccounts?.map(ca => ca.child_ps_account_id) || [])]
+          query = query.in('ps_customer_id', allIds)
+        } else {
+          query = query.eq('ps_customer_id', customerIdFilter)
+        }
       }
 
       // Apply filters
