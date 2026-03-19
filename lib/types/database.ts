@@ -960,6 +960,53 @@ export type Database = {
         }
         Relationships: []
       }
+      v_orders_list: {
+        Row: {
+          id: string
+          cust_order_number: string | null
+          cust_order_date: string | null
+          currency_code: string | null
+          status_code: string
+          pdf_file_url: string | null
+          email_subject: string | null
+          email_sender: string | null
+          email_received_at: string | null
+          created_at: string | null
+          updated_at: string | null
+          ps_customer_id: string | null
+          cust_shipto_address_line1: string | null
+          cust_shipto_address_line2: string | null
+          cust_shipto_address_line3: string | null
+          cust_shipto_city: string | null
+          cust_shipto_state: string | null
+          cust_shipto_country: string | null
+          cust_shipto_postal_code: string | null
+          ps_order_number: string | null
+          cust_carrier: string | null
+          cust_ship_via: string | null
+          cust_header_notes: string | null
+          custshipmethod: string | null
+          shipto_name: string | null
+          customername: string | null
+          cancelled_by: string | null
+          cancelled_at: string | null
+          cancelled_reason: string | null
+          exported_at: string | null
+          exported_by: string | null
+          erp_processed_at: string | null
+          erp_processed_by: string | null
+          csr_id: string | null
+          erp_load_status: string | null
+          ps_shipto_customer_id: string | null
+          resolved_customer_name: string | null
+          status_name: string | null
+          csr_name: string | null
+          total_amount: number | null
+          invalid_items_count: number | null
+          price_issues_count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       upsert_product_mapping: {
