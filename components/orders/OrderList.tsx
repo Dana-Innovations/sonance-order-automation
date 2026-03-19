@@ -19,7 +19,7 @@ export function OrderList({ userEmail }: { userEmail: string }) {
   const [page, setPage] = useState(1)
   const pageSize = 20
 
-  const { data: orders, isLoading, error } = useOrders({
+  const { data, isLoading, error } = useOrders({
     userEmail,
     statusFilter,
     csrFilter,
@@ -48,10 +48,9 @@ export function OrderList({ userEmail }: { userEmail: string }) {
     )
   }
 
-  const totalPages = orders ? Math.ceil(orders.length / pageSize) : 0
-  const paginatedOrders = orders
-    ? orders.slice((page - 1) * pageSize, page * pageSize)
-    : []
+  const orders = data?.orders || []
+  const totalCount = data?.totalCount || 0
+  const totalPages = Math.ceil(totalCount / pageSize)
 
   return (
     <div className="space-y-5">
@@ -93,13 +92,15 @@ export function OrderList({ userEmail }: { userEmail: string }) {
           setPage(1)
         }}
       />
-      <OrderTable orders={paginatedOrders} />
+      <OrderTable orders={orders} />
       
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-2">
           <p className="text-xs uppercase tracking-wider text-[#6b7a85]">
-            Page <span className="font-medium text-[#333F48]">{page}</span> of{' '}
+            Showing <span className="font-medium text-[#333F48]">{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalCount)}</span> of{' '}
+            <span className="font-medium text-[#333F48]">{totalCount}</span> orders
+            {' · '}Page <span className="font-medium text-[#333F48]">{page}</span> of{' '}
             <span className="font-medium text-[#333F48]">{totalPages}</span>
           </p>
           <div className="flex gap-2">
